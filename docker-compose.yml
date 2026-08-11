@@ -27,6 +27,7 @@ x-service-env: &service-env
   RabbitMQ__Pass: ${RABBIT_PASS}
   OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
   OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+  Cors__AllowedOrigins: ${CORS_ALLOWED_ORIGINS:-}
 
 x-dotnet-health: &dotnet-health
   test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/health"]

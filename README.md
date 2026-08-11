@@ -2,6 +2,8 @@
 
 Chat familiar distribuído baseado em React + .NET 8, com autenticação JWT, salas compartilhadas, convite por `PublicId`, mensagens em tempo real com SignalR, RabbitMQ, Redis, bancos PostgreSQL isolados por bounded context, YARP e telemetria OpenTelemetry.
 
+Para instalação no WSL2, resumo das mudanças e deployment com Vercel/Render, consulte [`DEPLOYMENT.md`](DEPLOYMENT.md).
+
 ## O que está implementado
 
 - **Identity Service**: registro, login, refresh token rotativo e logout.
@@ -10,7 +12,7 @@ Chat familiar distribuído baseado em React + .NET 8, com autenticação JWT, sa
 - **Realtime Hub**: SignalR autenticado, presença via Redis, validação de membro via gRPC, publicação de `MessageCreatedEvent`, confirmação de persistência, sincronização de roles e expulsão imediata de membros removidos.
 - **Message Service**: consumidor idempotente do evento, histórico REST e retenção configurável em lotes.
 - **Notification Service**: consumidor idempotente, resolução de destinatários pelos contratos internos, ledger de entrega por usuário e email SMTP opcional com retries.
-- **Gateway**: YARP com CORS, rate limit e proxy de HTTP/WebSocket.
+- **Gateway**: YARP com origens CORS explícitas por ambiente, rate limit e proxy de HTTP/WebSocket.
 - **Web**: React + TypeScript + Vite com registro/login, criação/listagem de salas, chat, convite por `PublicId`, sincronização eventual visível do perfil, controles coerentes com Admin/Member/Muted e histórico incremental por cursor ao rolar para cima.
 - **Observabilidade**: OpenTelemetry Collector, Jaeger, Prometheus e Grafana.
 - **Smoke test**: k6 para registro, login, criação de sala e leitura autorizada do histórico, com latências separadas.
@@ -63,7 +65,7 @@ Notificações ficam desativadas por padrão. Para SMTP com STARTTLS, configure 
 
 Para testar sem enviar emails externos, use `COMPOSE_PROFILES=notification-test`, aponte `SMTP_HOST=mailpit`, `SMTP_PORT=1025` e `SMTP_ENABLE_SSL=false`, e abra o Mailpit em `http://localhost:8025`. O profile é exclusivo de desenvolvimento/CI.
 
-O Notification consulta Room e Family Graph por gRPC autenticado, exclui o remetente e cria uma entrega por destinatário. Falhas recebem até cinco retries exponenciais e ficam registradas; entregas concluídas no ledger não são repetidas e o endereço é removido após o envio para reduzir retenção de PII. Como SMTP não oferece idempotência transacional, uma queda exatamente entre o aceite do provedor e o commit pode produzir uma duplicata; `X-FamilyChat-MessageId` permite correlação. Os contadores `notification_delivered` e `notification_failed` alimentam dashboard e alerta.
+O envio autorizado captura no evento um snapshot dos membros da sala, evitando que lag ou uma remoção posterior altere retroativamente os destinatários. O Notification resolve os emails no Family Graph, exclui o remetente e cria uma entrega por destinatário. Falhas recebem até cinco retries exponenciais e ficam registradas; entregas concluídas no ledger não são repetidas e o endereço é removido após o envio para reduzir retenção de PII. Como SMTP não oferece idempotência transacional, uma queda exatamente entre o aceite do provedor e o commit pode produzir uma duplicata; `X-FamilyChat-MessageId` permite correlação. Os contadores `notification_delivered` e `notification_failed` alimentam dashboard e alerta.
 
 ### Backup e restore
 

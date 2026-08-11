@@ -15,6 +15,7 @@ if grep -Eq '\$(request_uri|args|query_string)([^A-Za-z_]|$)' src/Web/nginx.conf
   exit 1
 fi
 test -f src/Web/tests/e2e/chat-flow.spec.ts
+test -f DEPLOYMENT.md
 test -f src/Web/src/profileProjection.test.ts
 test -f tests/Persistence.IntegrationTests/PostgresMigrationTests.cs
 test -x scripts/check-migrations.sh
@@ -25,6 +26,7 @@ test -f tests/Identity.API.Tests/IdentityInputTests.cs
 test -f tests/FamilyGraph.API.Tests/FamilyInputTests.cs
 test -f tests/Message.API.Tests/MessageRetentionPolicyTests.cs
 test -f tests/Notification.API.Tests/NotificationDeliveryTests.cs
+test -f tests/Gateway.Tests/CorsOriginsTests.cs
 test -f scripts/check-notification-delivery.mjs
 test -f deploy/grafana/provisioning/dashboards/family-chat.json
 test -f deploy/prometheus/rules/family-chat.yml

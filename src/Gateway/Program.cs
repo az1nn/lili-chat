@@ -11,8 +11,9 @@ builder.AddFamilyChatObservability("gateway");
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
+var allowedOrigins = CorsOrigins.Load(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
-    .WithOrigins("http://localhost:3000")
+    .WithOrigins(allowedOrigins)
     .AllowAnyHeader()
     .AllowAnyMethod()
     .AllowCredentials()));
