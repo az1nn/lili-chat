@@ -9,6 +9,7 @@ type AuthState = {
   login(email: string, password: string): Promise<void>
   register(username: string, email: string, password: string): Promise<void>
   logout(): Promise<void>
+  deleteAccount(password: string): Promise<void>
 }
 
 const AuthContext = createContext<AuthState | null>(null)
@@ -85,7 +86,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearSession()
   }
 
-  const value = useMemo(() => ({ token, user, initializing, login, register, logout }),
+  async function deleteAccount(password: string) {
+    await api<void>('/api/v1/auth/account', {
+      method: 'DELETE',
+      headers: csrfHeaders,
+      body: JSON.stringify({ password }),
+    })
+    clearSession()
+  }
+
+  const value = useMemo(() => ({ token, user, initializing, login, register, logout, deleteAccount }),
     [token, user, initializing])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

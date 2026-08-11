@@ -8,6 +8,12 @@ type AuthHandlers = {
 
 let authHandlers: AuthHandlers | null = null
 let refreshInFlight: Promise<string | null> | null = null
+const refreshExcludedPaths = new Set([
+  '/api/v1/auth/login',
+  '/api/v1/auth/register',
+  '/api/v1/auth/refresh',
+  '/api/v1/auth/logout',
+])
 
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string) {
@@ -34,7 +40,7 @@ export async function api<T>(
 ): Promise<T> {
   let res = await request(path, init, token ?? authHandlers?.getAccessToken() ?? null)
 
-  if (res.status === 401 && !path.startsWith('/api/v1/auth/') && authHandlers) {
+  if (res.status === 401 && !refreshExcludedPaths.has(path) && authHandlers) {
     const handlers = authHandlers
     refreshInFlight ??= handlers.refreshAccessToken().finally(() => {
       refreshInFlight = null

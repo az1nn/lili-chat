@@ -248,7 +248,7 @@ export function ChatPanel({ room, token, me, onRoomChanged, onRoomClosed }: {
 }
 
 function Workspace() {
-  const { token, user, logout } = useAuth()
+  const { token, user, logout, deleteAccount } = useAuth()
   const [rooms, setRooms] = useState<Room[]>([])
   const [selected, setSelected] = useState<Room | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -256,6 +256,8 @@ function Workspace() {
   const [profileRetry, setProfileRetry] = useState(0)
   const [name, setName] = useState('')
   const [error, setError] = useState('')
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deletingAccount, setDeletingAccount] = useState(false)
 
   async function loadRooms() {
     if (!token) return
@@ -303,6 +305,19 @@ function Workspace() {
     }
   }
 
+  async function removeAccount(e: FormEvent) {
+    e.preventDefault()
+    if (!window.confirm('Excluir sua conta e seus dados? Esta ação não pode ser desfeita.')) return
+    setDeletingAccount(true)
+    setError('')
+    try {
+      await deleteAccount(deletePassword)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Não foi possível excluir a conta')
+      setDeletingAccount(false)
+    }
+  }
+
   function roomChanged(room: Room) {
     setRooms(current => current.map(item => item.id === room.id ? room : item))
     setSelected(room)
@@ -340,6 +355,15 @@ function Workspace() {
 
       {error && <div className="error">{error}</div>}
       <button className="ghost logout" onClick={logout}>Sair</button>
+      <details>
+        <summary>Excluir conta</summary>
+        <form className="new-room" onSubmit={removeAccount}>
+          <input type="password" autoComplete="current-password" placeholder="Senha atual"
+            maxLength={128} required value={deletePassword}
+            onChange={e => setDeletePassword(e.target.value)} />
+          <button disabled={deletingAccount}>{deletingAccount ? '...' : 'Excluir'}</button>
+        </form>
+      </details>
     </aside>
 
     {selected && token && user

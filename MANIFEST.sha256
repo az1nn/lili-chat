@@ -93,11 +93,11 @@ ffab6ac3b49f656626181eba20db5bbb63e7bbb9e0a9a33949849ed682da8e9c  ./src/Web/pack
 ac6fe462c3d39859fde2a7932995c3d46fdf148866c6c675d488979cde5f075f  ./src/Web/package.json
 9b7375fd5f300ca1cc9d1da331225c5aba973f7ac4ac3b8ceda953ccd1464364  ./src/Web/playwright.config.ts
 b88ae69d56eff4b26a80c70835e7d66f1202000da6533529d2aaa19f21f8ae06  ./src/Web/src/App.test.tsx
-d01c86f560dac771732674a68dde4d317716ee3976c0069e2c994c5adafc4374  ./src/Web/src/App.tsx
-a4e2f8aea5f5d3ef65da2ef872cb46729e4bba9df77767c09f2d6111d8e08a00  ./src/Web/src/AuthContext.tsx
+306bd9480d689cb00bab9ce3ac764b035cb7dc459d50a06634c838bddc80d7b3  ./src/Web/src/App.tsx
+7383cb506f1769507d6660ab05bb1e19804d6c9e26941a5803b36f0e570f5de3  ./src/Web/src/AuthContext.tsx
 70488f59372d69a55b8fd6afe44ba1e98dce3d0a2da98cecec42bed7b55a802a  ./src/Web/src/ChatPanel.test.tsx
-fe44822af03936881b49118926f24a79883d12badcab4887d573bf03a4e3a7bc  ./src/Web/src/api.test.ts
-fb9cbfa596d9d38b06fb80e95244e889d8b592b01e3843b7a4c1a493f0644de2  ./src/Web/src/api.ts
+bd54bf94c8095d6356f1875071e7e09d85c49cdf53e66ead4367f199710833e1  ./src/Web/src/api.test.ts
+dad6f2e0fd503e00d1b4eedf00683ac8d33742986f31ecd342856e79c1a9938c  ./src/Web/src/api.ts
 ac1d5c362c26d18aedc99d33dcca405cf7eb76bed1a3182bfd694bd85d77466d  ./src/Web/src/chatReconciliation.test.ts
 eb9dbf4f6698da98de70bc21d9374ab82ca23d7acaf507dd1fe4949987dd5ded  ./src/Web/src/chatReconciliation.ts
 6145ebecb20332d80b992e8b446ec900d8b7ad35f16ceceafc60a2fbe0ee38c8  ./src/Web/src/history.test.ts
