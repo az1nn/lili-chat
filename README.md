@@ -7,7 +7,7 @@ Chat familiar distribuído baseado em React + .NET 8, com autenticação JWT, sa
 - **Identity Service**: registro, login, refresh token rotativo e logout.
 - **Family Graph Service**: projeção de usuários vindos do Identity, geração de `PublicId`, famílias e membros; gRPC para resolução de usuários.
 - **Room Service**: salas, membros, papéis Admin/Member/Muted; adição por `PublicId`; gRPC para autorização de acesso à sala.
-- **Realtime Hub**: SignalR autenticado, presença via Redis, validação de membro via gRPC, publicação de `MessageCreatedEvent`, confirmação de persistência e expulsão imediata de membros removidos.
+- **Realtime Hub**: SignalR autenticado, presença via Redis, validação de membro via gRPC, publicação de `MessageCreatedEvent`, confirmação de persistência, sincronização de roles e expulsão imediata de membros removidos.
 - **Message Service**: consumidor idempotente do evento e histórico REST.
 - **Notification Service**: consumidor do evento e registro de auditoria de notificação (o provedor real de push/email fica como extensão).
 - **Gateway**: YARP com CORS, rate limit e proxy de HTTP/WebSocket.
@@ -108,7 +108,7 @@ docker compose --profile test run --rm k6
 VUS=10 ITERATIONS=50 docker compose --profile test run --rm k6
 ```
 
-O E2E usa dois contextos isolados: registra A/B, convida por `PublicId`, troca mensagem via SignalR, aguarda a confirmação `persisted` emitida pela outbox do Message Service, comprova o histórico após reload e verifica a revogação depois de remover B.
+O E2E usa dois contextos isolados: registra A/B, convida por `PublicId`, troca mensagem via SignalR, aguarda a confirmação `persisted` emitida pela outbox do Message Service, comprova o histórico após reload, verifica mute/unmute em tempo real e valida a revogação depois de remover B.
 
 Os testes de persistência usam Testcontainers para aplicar as migrations de cada serviço em um database PostgreSQL isolado. Sem `RUN_INTEGRATION_TESTS=1`, esse projeto é reportado como skipped; a CI habilita o gate obrigatoriamente.
 

@@ -50,7 +50,8 @@ export function ChatPanel({ room, token, me, onRoomChanged, onRoomClosed }: {
   onRoomChanged(room: Room): void
   onRoomClosed(): Promise<void>
 }) {
-  const chat = useChat(room.id, token, me, onRoomClosed)
+  const chat = useChat(room.id, token, me, onRoomClosed,
+    role => onRoomChanged({ ...room, role }))
   const [input, setInput] = useState('')
   const [members, setMembers] = useState<RoomMember[]>([])
   const [publicId, setPublicId] = useState('')

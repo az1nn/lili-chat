@@ -1,19 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr'
 import { apiUrl } from './api'
-import type { Message } from './types'
+import type { Message, RoomRole } from './types'
 
-type HubResult = { success: boolean; error?: string; data?: { messageId?: string; onlineUsers?: string[] } }
+type HubResult = { success: boolean; error?: string; data?: { messageId?: string; onlineUsers?: string[]; role?: RoomRole } }
 
 export function useChat(
   roomId: string | null,
   token: string | null,
   senderId: string | null,
   onAccessRevoked?: () => void | Promise<void>,
+  onRoleChanged?: (role: RoomRole) => void,
 ) {
   const connectionRef = useRef<HubConnection | null>(null)
   const persistedIdsRef = useRef(new Set<string>())
   const onAccessRevokedRef = useRef(onAccessRevoked)
+  const onRoleChangedRef = useRef(onRoleChanged)
   const [messages, setMessages] = useState<Message[]>([])
   const [onlineUsers, setOnlineUsers] = useState<string[]>([])
   const [status, setStatus] = useState('disconnected')
@@ -21,6 +23,10 @@ export function useChat(
   useEffect(() => {
     onAccessRevokedRef.current = onAccessRevoked
   }, [onAccessRevoked])
+
+  useEffect(() => {
+    onRoleChangedRef.current = onRoleChanged
+  }, [onRoleChanged])
 
   useEffect(() => {
     if (!roomId || !token) return
@@ -63,10 +69,14 @@ export function useChat(
       await connection.stop()
       await onAccessRevokedRef.current?.()
     })
+    connection.on('RoomRoleChanged', (payload: { role: RoomRole }) => {
+      onRoleChangedRef.current?.(payload.role)
+    })
     connection.onreconnecting(() => setStatus('reconnecting'))
     connection.onreconnected(async () => {
       setStatus('connected')
-      await connection.invoke('JoinRoom', roomId)
+      const result = await connection.invoke<HubResult>('JoinRoom', roomId)
+      if (result.success && result.data?.role) onRoleChangedRef.current?.(result.data.role)
     })
     connection.onclose(() => setStatus('disconnected'))
 
@@ -79,6 +89,7 @@ export function useChat(
         const result = await connection.invoke<HubResult>('JoinRoom', roomId)
         if (!result.success) throw new Error(result.error || 'Falha ao entrar na sala')
         setOnlineUsers(result.data?.onlineUsers || [])
+        if (result.data?.role) onRoleChangedRef.current?.(result.data.role)
         setStatus('connected')
       } catch (e) {
         if (!cancelled) setStatus(e instanceof Error ? e.message : 'error')

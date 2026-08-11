@@ -328,8 +328,16 @@ app.MapPatch("/api/v1/rooms/{roomId:guid}/members/{targetId:guid}/role", async (
         return Results.Conflict(new { error = "A role do owner não pode ser alterada." });
     if (decision != AuthorizationDecision.Allowed) return Results.Forbid();
 
+    var previousRole = target.Role;
+    if (previousRole == role)
+        return Results.Ok(new { target.UserId, target.Role });
+
     target.Role = role;
     db.Audits.Add(RoomAudit.Create(roomId, userId, targetId, "member.role_changed", role));
+    var changed = new RoomMemberRoleChangedEvent(
+        roomId, targetId, userId, previousRole, role, DateTimeOffset.UtcNow);
+    db.OutboxMessages.Add(OutboxMessage.Create(
+        Guid.NewGuid(), nameof(RoomMemberRoleChangedEvent), changed));
     await db.SaveChangesAsync(ct);
     return Results.Ok(new { target.UserId, target.Role });
 }).RequireAuthorization();
@@ -575,6 +583,10 @@ class RoomOutboxPublisher(IServiceScopeFactory scopeFactory, ILogger<RoomOutboxP
                     case nameof(RoomMemberRemovedEvent):
                         await publish.Publish(JsonSerializer.Deserialize<RoomMemberRemovedEvent>(message.Payload)
                             ?? throw new InvalidOperationException("Invalid member-removed payload"), ct);
+                        break;
+                    case nameof(RoomMemberRoleChangedEvent):
+                        await publish.Publish(JsonSerializer.Deserialize<RoomMemberRoleChangedEvent>(message.Payload)
+                            ?? throw new InvalidOperationException("Invalid member-role-changed payload"), ct);
                         break;
                     default:
                         throw new InvalidOperationException($"Unknown outbox message type: {message.Type}");

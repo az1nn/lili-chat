@@ -40,3 +40,11 @@ public record RoomMemberRemovedEvent(
     Guid RemovedById,
     string Reason,
     DateTimeOffset OccurredAt);
+
+public record RoomMemberRoleChangedEvent(
+    Guid RoomId,
+    Guid UserId,
+    Guid ChangedById,
+    string PreviousRole,
+    string Role,
+    DateTimeOffset OccurredAt);

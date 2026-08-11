@@ -19,7 +19,7 @@ async function openRoom(page: Page, roomName: string) {
   await expect(page.locator('.chat-header h2')).toHaveText(roomName)
 }
 
-test('two users exchange, persist, and revoke room access', async ({ browser }) => {
+test('two users exchange, persist, synchronize roles, and revoke room access', async ({ browser }) => {
   const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`
   const roomName = `Sala E2E ${suffix}`
   const message = `Mensagem persistida ${suffix}`
@@ -56,6 +56,15 @@ test('two users exchange, persist, and revoke room access', async ({ browser }) 
       await roomButton.click()
       return (await pageB.locator('.messages').textContent())?.includes(message) ?? false
     }, { timeout: 30_000 }).toBe(true)
+
+    await pageA.getByRole('button', { name: 'silenciar', exact: true }).click()
+    await expect(pageB.getByPlaceholder('Você está silenciado nesta sala'))
+      .toBeDisabled({ timeout: 30_000 })
+    await expect(pageB.getByRole('button', { name: 'Enviar' })).toBeDisabled()
+
+    await pageA.getByRole('button', { name: 'desmutar', exact: true }).click()
+    await expect(pageB.getByPlaceholder('Digite uma mensagem...'))
+      .toBeEnabled({ timeout: 30_000 })
 
     pageA.once('dialog', dialog => dialog.accept())
     await pageA.getByRole('button', { name: 'remover', exact: true }).click()

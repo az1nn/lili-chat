@@ -59,6 +59,7 @@ builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<MessagePersistedConsumer>();
     x.AddConsumer<RoomMemberRemovedConsumer>();
+    x.AddConsumer<RoomMemberRoleChangedConsumer>();
     x.UsingRabbitMq((ctx, cfg) =>
     {
         cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "rabbitmq", "/", h =>
@@ -375,5 +376,35 @@ class RoomMemberRemovedConsumer(
             "PresenceUpdated",
             new { roomId = message.RoomId, onlineUsers = online },
             context.CancellationToken);
+    }
+}
+
+class RoomMemberRoleChangedConsumer(
+    IHubContext<ChatHub> hub,
+    IConnectionMultiplexer redis) : IConsumer<RoomMemberRoleChangedEvent>
+{
+    public async Task Consume(ConsumeContext<RoomMemberRoleChangedEvent> context)
+    {
+        var message = context.Message;
+        var db = redis.GetDatabase();
+        var entries = await db.HashGetAllAsync($"familychat:room:{message.RoomId}:connections");
+        var connectionIds = entries
+            .Where(entry => entry.Value == message.UserId.ToString())
+            .Select(entry => entry.Name.ToString())
+            .ToArray();
+
+        foreach (var connectionId in connectionIds)
+        {
+            await hub.Clients.Client(connectionId).SendAsync(
+                "RoomRoleChanged",
+                new
+                {
+                    roomId = message.RoomId,
+                    userId = message.UserId,
+                    previousRole = message.PreviousRole,
+                    role = message.Role
+                },
+                context.CancellationToken);
+        }
     }
 }
