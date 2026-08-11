@@ -1,7 +1,7 @@
 3cb8b671d0fbaf91212cf8eb161969acea26578b9e2910ef11851a542f05a8e5  ./.config/dotnet-tools.json
 c16184fcc1a9f92e43d8f7bb079bb1c86d07d555071e87acbad16b0b83b83d14  ./.dockerignore
 72f902db0f7bdbedf2f95e5f6935fd82c68977e74c46a87936f2519d599f98dd  ./.env.example
-5378c10020ffa8c99affcaeb67035be023945021701eb05a8e3eb8f646d28fea  ./.github/workflows/ci.yml
+2a8f1e1fe9ae3d4ad9ae9d23b89c14e78d508ac619b6695c15cf5cdea82dcdac  ./.github/workflows/ci.yml
 bbadc572275abfb0fa1e35d0dca9023133788362614a974387232c5ee7848a08  ./.gitignore
 e74389ff86d8ee6d24eb4c0d76aac9bbb0d0457d3d3f333f00489cfc50aa6111  ./AGENTS.md
 2a72db08877e6544054a931132146bef59c4a181eaa66aa16ebf4a6ccbedaf01  ./FamilyChat.sln
