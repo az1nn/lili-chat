@@ -29,7 +29,12 @@ builder.Services.AddSignalR(o =>
 var roomToken = InternalServiceAuth.RequiredToken(builder.Configuration, "InternalAuth:RoomToken");
 builder.Services.AddGrpcClient<RoomGrpc.RoomGrpcClient>(o =>
     o.Address = new Uri(builder.Configuration["Services:Room"] ?? "http://room-svc:8081"))
-    .ConfigureHttpClient(client => InternalServiceAuth.AddToken(client, roomToken));
+    .ConfigureChannel(o => o.UnsafeUseInsecureChannelCallCredentials = true)
+    .AddCallCredentials((_, metadata) =>
+    {
+        metadata.Add(InternalServiceAuth.HeaderName, roomToken);
+        return Task.CompletedTask;
+    });
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>

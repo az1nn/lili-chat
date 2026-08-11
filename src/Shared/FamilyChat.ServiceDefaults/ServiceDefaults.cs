@@ -189,7 +189,7 @@ public static class JwtKeyFactory
 
 public static class InternalServiceAuth
 {
-    public const string HeaderName = "X-FamilyChat-Service-Token";
+    public const string HeaderName = "x-familychat-service-token";
 
     public static string RequiredToken(IConfiguration configuration, string key)
     {
@@ -226,7 +226,4 @@ public static class InternalServiceAuth
         });
         return app;
     }
-
-    public static void AddToken(HttpClient client, string token) =>
-        client.DefaultRequestHeaders.Add(HeaderName, token);
 }

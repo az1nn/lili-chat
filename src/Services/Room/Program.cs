@@ -28,7 +28,12 @@ var internalToken = InternalServiceAuth.RequiredToken(builder.Configuration, "In
 var familyToken = InternalServiceAuth.RequiredToken(builder.Configuration, "InternalAuth:FamilyToken");
 builder.Services.AddGrpcClient<FamilyGraphGrpc.FamilyGraphGrpcClient>(o =>
     o.Address = new Uri(builder.Configuration["Services:FamilyGraph"] ?? "http://family-svc:8081"))
-    .ConfigureHttpClient(client => InternalServiceAuth.AddToken(client, familyToken));
+    .ConfigureChannel(o => o.UnsafeUseInsecureChannelCallCredentials = true)
+    .AddCallCredentials((_, metadata) =>
+    {
+        metadata.Add(InternalServiceAuth.HeaderName, familyToken);
+        return Task.CompletedTask;
+    });
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
