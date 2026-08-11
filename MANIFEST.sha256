@@ -4,7 +4,7 @@ c16184fcc1a9f92e43d8f7bb079bb1c86d07d555071e87acbad16b0b83b83d14  ./.dockerignor
 aaa3b7bbb229a08c8cdd2422f38c19a7a24fbddec05d7d228a11d857a26f99cb  ./.github/workflows/ci.yml
 bbadc572275abfb0fa1e35d0dca9023133788362614a974387232c5ee7848a08  ./.gitignore
 e74389ff86d8ee6d24eb4c0d76aac9bbb0d0457d3d3f333f00489cfc50aa6111  ./AGENTS.md
-063c6055cdbda5334df95a9c608f14fd83eb9673c28dba1e21e3aad99972cd8e  ./DEPLOYMENT.md
+d75f5bf2b231f3a1554b0b562b5ceaa7e0d679cd0d79cfec0350b6fe6272fd4d  ./DEPLOYMENT.md
 5b866cccbd355fefcfeb908beac99ef5e97ddad9676fee1d136c063384f7a2e9  ./FamilyChat.sln
 8f25f55c58b8cebae8406313e1cd2e7d76ef8c83c7397ad78a24f69d003d4be7  ./README.md
 849cde782702e5d7fc3813859aff513d6746a12b47ef0a35a3ca22f31f400777  ./VALIDATION.md
@@ -26,7 +26,7 @@ d60270a4dff30afa64f431eec5cef62b96916d9e3ca4d4812e3cf77cec4d9838  ./scripts/chec
 cc5bd9b37fe77d8b31cf32bcce7bfe50fec3b4f8660bb77e3ea82ef0f651417c  ./src/Gateway/CorsOrigins.cs
 6aa568f12f6f518cf49ae195de763e51b4b849025b0f3777858785b4db4a0803  ./src/Gateway/Dockerfile
 e39a3572d3bfc307514001ecea725c8915e9a351eca5ed946c75a752500d10d1  ./src/Gateway/Gateway.csproj
-a899db9a2a7213e63943ebb4918796bc5d83506697e8efbe55d3f15c29496d50  ./src/Gateway/Program.cs
+9b9382a10fb9902343dd42fdb41f2cfe5adfcbba1d38e4e7bb79d6074162edeb  ./src/Gateway/Program.cs
 8f08107c90de0065c54ec7d655890b272eb324799f06a5ea3afb75864cfd6126  ./src/Gateway/appsettings.json
 f57b7814e4a7585f1024b36c5ff2bffe2d4a82d325561cf56e7309db77478376  ./src/Services/FamilyGraph/Dockerfile
 f442cbdc56851a974bfe22d2cefc21203f3b5425ef0c938812224c63894814b4  ./src/Services/FamilyGraph/FamilyDbContextFactory.cs
@@ -97,7 +97,7 @@ b264f53eef4835124129c985e740eca7c0e1ff44e5793da81e0ed2d6ca4db137  ./src/Web/inde
 886d72370faa2b43a15ad7abe358913ca39fe15a93fc3c7d112a6eb95bc8a1e7  ./src/Web/nginx.conf
 ffab6ac3b49f656626181eba20db5bbb63e7bbb9e0a9a33949849ed682da8e9c  ./src/Web/package-lock.json
 ac6fe462c3d39859fde2a7932995c3d46fdf148866c6c675d488979cde5f075f  ./src/Web/package.json
-9b7375fd5f300ca1cc9d1da331225c5aba973f7ac4ac3b8ceda953ccd1464364  ./src/Web/playwright.config.ts
+d11b9fa4174a18334d563f93004abbad7785037456746dbcec10785f9d54a479  ./src/Web/playwright.config.ts
 b88ae69d56eff4b26a80c70835e7d66f1202000da6533529d2aaa19f21f8ae06  ./src/Web/src/App.test.tsx
 306bd9480d689cb00bab9ce3ac764b035cb7dc459d50a06634c838bddc80d7b3  ./src/Web/src/App.tsx
 7383cb506f1769507d6660ab05bb1e19804d6c9e26941a5803b36f0e570f5de3  ./src/Web/src/AuthContext.tsx
