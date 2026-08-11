@@ -11,8 +11,7 @@ Checks executed locally and in GitHub Actions through 2026-08-11:
 - `dotnet ef migrations has-pending-model-changes`: PASS for Identity, Family Graph, Room, Message, and Notification
 - `dotnet build FamilyChat.sln --no-restore`: PASS, zero warnings
 - `dotnet test FamilyChat.sln --no-build --no-restore`: PASS locally, 68 contract/authorization/security/input/retry tests; Docker-backed migration test skipped locally by design
-- NuGet vulnerability audit: no known vulnerable packages in runtime projects after upgrading OpenTelemetry to 1.17.0, pinning MessagePack 2.5.302, and aligning EF Core/Npgsql EF/dotnet-ef on 8.0.11
-- Known audit debt: test projects retain legacy xUnit transitives (`System.Net.Http` and `System.Text.RegularExpressions` 4.3.0) pending a compatible test-stack upgrade
+- NuGet vulnerability audit: no known vulnerable direct or transitive packages across runtime and test projects after upgrading OpenTelemetry to 1.17.0, pinning MessagePack 2.5.302, aligning EF Core/Npgsql EF/dotnet-ef on 8.0.11, and updating xUnit to 2.9.3 with its Visual Studio runner 3.1.5
 - `npm ci`: PASS
 - `npm run typecheck`: PASS
 - `npm test`: PASS, 3 React/API authentication tests across 2 files
