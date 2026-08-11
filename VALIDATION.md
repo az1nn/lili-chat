@@ -11,6 +11,8 @@ Checks executed locally and in GitHub Actions through 2026-08-11:
 - `dotnet ef migrations has-pending-model-changes`: PASS for Identity, Family Graph, Room, Message, and Notification
 - `dotnet build FamilyChat.sln --no-restore`: PASS, zero warnings
 - `dotnet test FamilyChat.sln --no-build --no-restore`: PASS locally, 68 contract/authorization/security/input/retry tests; Docker-backed migration test skipped locally by design
+- NuGet vulnerability audit: OpenTelemetry and MessagePack advisories resolved by upgrading to OpenTelemetry 1.17.0 and pinning MessagePack 2.5.302
+- Known audit debt: EF Core 8.0.4 still resolves vulnerable `Microsoft.Extensions.Caching.Memory` 8.0.0 and `System.Text.Json` 8.0.0 transitively in database services; test projects also retain legacy xUnit transitives pending a compatible upgrade
 - `npm ci`: PASS
 - `npm run typecheck`: PASS
 - `npm test`: PASS, 3 React/API authentication tests across 2 files
