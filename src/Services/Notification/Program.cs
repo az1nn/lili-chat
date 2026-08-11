@@ -299,11 +299,13 @@ class MessageNotificationConsumer(
         await db.SaveChangesAsync(ct);
         foreach (var recipient in NotificationRecipients.Valid(recipients, e.SenderId))
         {
-            audit.Deliveries.Add(new NotificationDelivery
+            var delivery = new NotificationDelivery
             {
                 Id = Guid.NewGuid(), AuditId = audit.Id, UserId = recipient.UserId,
                 Recipient = recipient.Email, Status = NotificationStatuses.Queued
-            });
+            };
+            audit.Deliveries.Add(delivery);
+            db.Deliveries.Add(delivery);
         }
         await db.SaveChangesAsync(ct);
     }
@@ -311,7 +313,8 @@ class MessageNotificationConsumer(
     void DiscardPendingDeliveries(NotificationAudit audit)
     {
         var pendingDeliveries = db.ChangeTracker.Entries<NotificationDelivery>()
-            .Where(entry => entry.State == EntityState.Added && entry.Entity.AuditId == audit.Id)
+            .Where(entry => entry.Entity.AuditId == audit.Id &&
+                entry.State is EntityState.Added or EntityState.Modified)
             .Select(entry => entry.Entity)
             .ToArray();
 
