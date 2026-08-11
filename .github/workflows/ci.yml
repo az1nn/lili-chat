@@ -111,16 +111,22 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Start distributed stack
+        id: stack
         run: |
           cp .env.example .env
           docker compose up --detach --build --wait --wait-timeout 240
           curl --fail http://localhost:5000/health
 
       - name: Run two-user browser flow
+        id: browser
+        continue-on-error: true
         working-directory: src/Web
         run: npm run test:e2e
 
       - name: Verify SMTP notification delivery
+        id: smtp
+        if: ${{ always() && !cancelled() && steps.stack.outcome == 'success' && steps.browser.outcome == 'success' }}
+        continue-on-error: true
         run: |
           if ! node scripts/check-notification-delivery.mjs; then
             ledger=$(docker compose exec -T postgres-notification psql \
@@ -134,14 +140,38 @@ jobs:
           fi
 
       - name: Run k6 smoke test
+        id: k6
+        if: ${{ always() && !cancelled() && steps.stack.outcome == 'success' }}
+        continue-on-error: true
         run: docker compose --profile test run --rm k6
 
       - name: Drill database backup and restore
+        id: backup
+        if: ${{ always() && !cancelled() && steps.stack.outcome == 'success' }}
+        continue-on-error: true
         run: |
           backup_dir=$(mktemp -d)
           ./scripts/backup-databases.sh "$backup_dir"
           CLEANUP_RESTORED_DATABASES=1 \
             ./scripts/restore-databases.sh "$backup_dir" _restore_ci
+
+      - name: Assert distributed checks
+        if: ${{ always() && !cancelled() && steps.stack.outcome == 'success' }}
+        run: |
+          failed=0
+          for result in \
+            "browser:${{ steps.browser.outcome }}" \
+            "smtp:${{ steps.smtp.outcome }}" \
+            "k6:${{ steps.k6.outcome }}" \
+            "backup:${{ steps.backup.outcome }}"; do
+            name=${result%%:*}
+            outcome=${result#*:}
+            if [ "$outcome" != success ]; then
+              echo "::error title=Distributed check failed::$name finished with $outcome"
+              failed=1
+            fi
+          done
+          exit "$failed"
 
       - name: Capture container logs
         if: failure()
