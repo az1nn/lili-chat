@@ -88,8 +88,8 @@ jobs:
     needs: validate
     timeout-minutes: 30
     env:
-      ASPNETCORE_ENVIRONMENT: Test
       NOTIFICATION_PROVIDER: Stub
+      NOTIFICATION_ALLOW_STUB: "true"
       NOTIFICATION_INCLUDE_CONTENT: "false"
     steps:
       - uses: actions/checkout@v4
