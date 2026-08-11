@@ -121,7 +121,14 @@ jobs:
         run: npm run test:e2e
 
       - name: Verify SMTP notification delivery
-        run: node scripts/check-notification-delivery.mjs
+        run: |
+          if ! node scripts/check-notification-delivery.mjs; then
+            docker compose exec -T postgres-notification psql \
+              --username app --dbname notification \
+              --command 'SELECT a."MessageId", a."Status", d."UserId", d."Status", d."Attempts", d."LastError" FROM notification_audit a LEFT JOIN notification_delivery d ON d."AuditId" = a."Id" ORDER BY a."CreatedAt" DESC;'
+            docker compose logs --no-color --tail=200 notification-svc mailpit
+            exit 1
+          fi
 
       - name: Run k6 smoke test
         run: docker compose --profile test run --rm k6
