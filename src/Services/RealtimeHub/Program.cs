@@ -60,6 +60,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<MessagePersistedConsumer>();
     x.AddConsumer<RoomMemberRemovedConsumer>();
     x.AddConsumer<RoomMemberRoleChangedConsumer>();
+    x.AddConsumer<RoomArchivedConsumer>();
     x.UsingRabbitMq((ctx, cfg) =>
     {
         cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "rabbitmq", "/", h =>
@@ -407,5 +408,32 @@ class RoomMemberRoleChangedConsumer(
                 },
                 context.CancellationToken);
         }
+    }
+}
+
+class RoomArchivedConsumer(
+    IHubContext<ChatHub> hub,
+    IConnectionMultiplexer redis) : IConsumer<RoomArchivedEvent>
+{
+    public async Task Consume(ConsumeContext<RoomArchivedEvent> context)
+    {
+        var message = context.Message;
+        var db = redis.GetDatabase();
+        var presenceKey = $"familychat:room:{message.RoomId}:connections";
+        var connectionIds = (await db.HashKeysAsync(presenceKey))
+            .Select(value => value.ToString())
+            .ToArray();
+
+        foreach (var connectionId in connectionIds)
+        {
+            await hub.Clients.Client(connectionId).SendAsync(
+                "RoomAccessRevoked",
+                new { roomId = message.RoomId, reason = "archived" },
+                context.CancellationToken);
+            await hub.Groups.RemoveFromGroupAsync(
+                connectionId, message.RoomId.ToString(), context.CancellationToken);
+        }
+
+        await db.KeyDeleteAsync(presenceKey);
     }
 }

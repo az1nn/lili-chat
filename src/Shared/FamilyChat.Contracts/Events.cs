@@ -50,3 +50,8 @@ public record RoomMemberRoleChangedEvent(
     string PreviousRole,
     string Role,
     DateTimeOffset OccurredAt);
+
+public record RoomArchivedEvent(
+    Guid RoomId,
+    Guid ArchivedById,
+    DateTimeOffset OccurredAt);

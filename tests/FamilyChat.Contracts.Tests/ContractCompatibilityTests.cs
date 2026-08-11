@@ -70,6 +70,7 @@ public class ContractCompatibilityTests
         new RoomMemberAddedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Member", DateTimeOffset.UtcNow),
         new RoomMemberRemovedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "removed", DateTimeOffset.UtcNow),
         new RoomMemberRoleChangedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Member", "Muted", DateTimeOffset.UtcNow),
+        new RoomArchivedEvent(Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow),
         new MessageCreatedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "olá", DateTimeOffset.UtcNow, Guid.NewGuid()),
         new MessagePersistedEvent(Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow, Guid.NewGuid())
     };
@@ -81,6 +82,7 @@ public class ContractCompatibilityTests
         { new RoomMemberAddedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Member", DateTimeOffset.UtcNow), ["RoomId", "UserId", "AddedById", "Role", "OccurredAt"] },
         { new RoomMemberRemovedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "removed", DateTimeOffset.UtcNow), ["RoomId", "UserId", "RemovedById", "Reason", "OccurredAt"] },
         { new RoomMemberRoleChangedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Member", "Muted", DateTimeOffset.UtcNow), ["RoomId", "UserId", "ChangedById", "PreviousRole", "Role", "OccurredAt"] },
+        { new RoomArchivedEvent(Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow), ["RoomId", "ArchivedById", "OccurredAt"] },
         { new MessageCreatedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "olá", DateTimeOffset.UtcNow, Guid.NewGuid()), ["MessageId", "RoomId", "SenderId", "Content", "SentAt", "CorrelationId", "RoomName", "NotificationUserIds"] },
         { new MessagePersistedEvent(Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow, Guid.NewGuid()), ["MessageId", "RoomId", "PersistedAt", "CorrelationId"] }
     };

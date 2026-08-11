@@ -181,6 +181,9 @@ app.MapDelete("/api/v1/rooms/{roomId:guid}", async (
     if (room.OwnerId != userId) return Results.Forbid();
     room.ArchivedAt = DateTimeOffset.UtcNow;
     db.Audits.Add(RoomAudit.Create(room.Id, userId, null, "room.archived"));
+    var archived = new RoomArchivedEvent(room.Id, userId, room.ArchivedAt.Value);
+    db.OutboxMessages.Add(OutboxMessage.Create(
+        Guid.NewGuid(), nameof(RoomArchivedEvent), archived));
     await db.SaveChangesAsync(ct);
     return Results.NoContent();
 }).RequireAuthorization();
@@ -587,6 +590,10 @@ class RoomOutboxPublisher(IServiceScopeFactory scopeFactory, ILogger<RoomOutboxP
                     case nameof(RoomMemberRoleChangedEvent):
                         await publish.Publish(JsonSerializer.Deserialize<RoomMemberRoleChangedEvent>(message.Payload)
                             ?? throw new InvalidOperationException("Invalid member-role-changed payload"), ct);
+                        break;
+                    case nameof(RoomArchivedEvent):
+                        await publish.Publish(JsonSerializer.Deserialize<RoomArchivedEvent>(message.Payload)
+                            ?? throw new InvalidOperationException("Invalid room-archived payload"), ct);
                         break;
                     default:
                         throw new InvalidOperationException($"Unknown outbox message type: {message.Type}");

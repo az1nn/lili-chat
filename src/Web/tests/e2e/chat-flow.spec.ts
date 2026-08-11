@@ -22,6 +22,7 @@ async function openRoom(page: Page, roomName: string) {
 test('two users exchange, persist, synchronize roles, and revoke room access', async ({ browser }) => {
   const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`
   const roomName = `Sala E2E ${suffix}`
+  const archivedRoomName = `Sala Arquivada ${suffix}`
   const message = `Mensagem persistida ${suffix}`
   const contextA = await browser.newContext()
   const contextB = await browser.newContext()
@@ -76,6 +77,24 @@ test('two users exchange, persist, synchronize roles, and revoke room access', a
 
     await pageB.reload()
     await expect(pageB.getByRole('button', { name: new RegExp(roomName) })).toHaveCount(0)
+
+    await pageA.getByPlaceholder('Nova sala').fill(archivedRoomName)
+    await pageA.locator('.new-room button').click()
+    await pageA.getByPlaceholder('PublicId do familiar').fill(publicIdB!)
+    await pageA.locator('.invite button').click()
+    await expect(pageA.locator('.member-strip')).toContainText(`bob-${suffix}`)
+
+    await pageB.reload()
+    await openRoom(pageB, archivedRoomName)
+    await expect(pageB.locator('.chat-header')).toContainText('connected')
+
+    pageA.once('dialog', dialog => dialog.accept())
+    await pageA.getByRole('button', { name: 'Arquivar', exact: true }).click()
+    await expect(pageA.getByRole('button', { name: new RegExp(archivedRoomName) }))
+      .toHaveCount(0)
+    await expect(pageB.getByRole('button', { name: new RegExp(archivedRoomName) }))
+      .toHaveCount(0, { timeout: 30_000 })
+    await expect(pageB.locator('.welcome')).toContainText('Selecione ou crie uma sala')
   } finally {
     await contextA.close()
     await contextB.close()
