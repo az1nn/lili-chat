@@ -47,6 +47,7 @@ var rabbitMq = RabbitMqCredentials.Load(
 
 builder.Services.AddMassTransit(x =>
 {
+    x.AddConsumer<UserDeletedRoomConsumer>();
     x.UsingRabbitMq((ctx, cfg) =>
     {
         cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "rabbitmq", "/", h =>
@@ -54,12 +55,26 @@ builder.Services.AddMassTransit(x =>
             h.Username(rabbitMq.Username);
             h.Password(rabbitMq.Password);
         });
+        cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(1)));
         cfg.ConfigureEndpoints(ctx);
     });
 });
 
 var app = builder.Build();
 app.UseAuthentication();
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api/v1/rooms") &&
+        TryUserId(context.User, out var userId) &&
+        await context.RequestServices.GetRequiredService<RoomDbContext>()
+            .DeletedUsers.AsNoTracking().AnyAsync(user => user.UserId == userId,
+                context.RequestAborted))
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return;
+    }
+    await next();
+});
 app.UseAuthorization();
 app.UseInternalGrpcAuthentication("/room.RoomGrpc", internalToken);
 
@@ -279,6 +294,8 @@ app.MapPost("/api/v1/rooms/{roomId:guid}/members/by-public-id", async (
     }
     if (!resolved.Found || !Guid.TryParse(resolved.UserId, out var targetId))
         return Results.NotFound(new { error = "PublicId não encontrado." });
+    if (await db.DeletedUsers.AsNoTracking().AnyAsync(user => user.UserId == targetId, ct))
+        return Results.NotFound(new { error = "PublicId não encontrado." });
     if (room.Members.Any(m => m.UserId == targetId))
         return Results.Conflict(new { error = "Usuário já está na sala." });
 
@@ -478,6 +495,7 @@ class RoomDbContext(DbContextOptions<RoomDbContext> options) : DbContext(options
     public DbSet<RoomMember> RoomMembers => Set<RoomMember>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<RoomAudit> Audits => Set<RoomAudit>();
+    public DbSet<DeletedRoomUser> DeletedUsers => Set<DeletedRoomUser>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -498,7 +516,17 @@ class RoomDbContext(DbContextOptions<RoomDbContext> options) : DbContext(options
         b.Entity<RoomAudit>().HasIndex(x => new { x.RoomId, x.OccurredAt });
         b.Entity<RoomAudit>().Property(x => x.Action).HasMaxLength(100);
         b.Entity<RoomAudit>().Property(x => x.Detail).HasMaxLength(500);
+
+        b.Entity<DeletedRoomUser>().ToTable("deleted_room_users").HasKey(x => x.UserId);
+        b.Entity<DeletedRoomUser>().HasIndex(x => x.CorrelationId).IsUnique();
     }
+}
+
+class DeletedRoomUser
+{
+    public Guid UserId { get; set; }
+    public Guid CorrelationId { get; set; }
+    public DateTimeOffset DeletedAt { get; set; }
 }
 
 class RoomAudit
@@ -542,6 +570,66 @@ class OutboxMessage
         Payload = JsonSerializer.Serialize(message),
         OccurredAt = DateTimeOffset.UtcNow
     };
+}
+
+class UserDeletedRoomConsumer(RoomDbContext db) : IConsumer<UserDeletedEvent>
+{
+    public Task Consume(ConsumeContext<UserDeletedEvent> context) =>
+        RoomUserDeletion.ApplyAsync(db, context.Message, context.CancellationToken);
+}
+
+static class RoomUserDeletion
+{
+    public static async Task<bool> ApplyAsync(
+        RoomDbContext db,
+        UserDeletedEvent message,
+        CancellationToken ct)
+    {
+        if (await db.DeletedUsers.AnyAsync(user => user.UserId == message.UserId, ct))
+            return false;
+
+        var ownedRooms = await db.Rooms
+            .Where(room => room.OwnerId == message.UserId && room.ArchivedAt == null)
+            .ToListAsync(ct);
+        var memberships = await db.RoomMembers
+            .Where(member => member.UserId == message.UserId &&
+                member.Room.OwnerId != message.UserId)
+            .ToListAsync(ct);
+
+        db.DeletedUsers.Add(new DeletedRoomUser
+        {
+            UserId = message.UserId,
+            CorrelationId = message.CorrelationId,
+            DeletedAt = message.OccurredAt
+        });
+
+        foreach (var room in ownedRooms)
+        {
+            room.ArchivedAt = message.OccurredAt;
+            db.Audits.Add(RoomAudit.Create(
+                room.Id, message.UserId, null, "room.archived", "owner_account_deleted"));
+            var archived = new RoomArchivedEvent(
+                room.Id, message.UserId, message.OccurredAt);
+            db.OutboxMessages.Add(OutboxMessage.Create(
+                Guid.NewGuid(), nameof(RoomArchivedEvent), archived));
+        }
+
+        foreach (var membership in memberships)
+        {
+            db.RoomMembers.Remove(membership);
+            db.Audits.Add(RoomAudit.Create(
+                membership.RoomId, message.UserId, message.UserId,
+                "member.removed", "account_deleted"));
+            var removed = new RoomMemberRemovedEvent(
+                membership.RoomId, message.UserId, message.UserId,
+                "account_deleted", message.OccurredAt);
+            db.OutboxMessages.Add(OutboxMessage.Create(
+                Guid.NewGuid(), nameof(RoomMemberRemovedEvent), removed));
+        }
+
+        await db.SaveChangesAsync(ct);
+        return true;
+    }
 }
 
 class RoomOutboxPublisher(IServiceScopeFactory scopeFactory, ILogger<RoomOutboxPublisher> logger)
@@ -636,6 +724,10 @@ class RoomGrpcService(RoomDbContext db) : RoomGrpc.RoomGrpcBase
             !Guid.TryParse(request.UserId, out var userId))
             return new IsMemberResponse { IsMember = false, Role = "none", CanSendMessages = false };
 
+        if (await db.DeletedUsers.AsNoTracking()
+            .AnyAsync(user => user.UserId == userId, context.CancellationToken))
+            return new IsMemberResponse { IsMember = false, Role = "none", CanSendMessages = false };
+
         var member = await db.RoomMembers.AsNoTracking()
             .Where(m => m.RoomId == roomId && m.UserId == userId &&
                 m.Room.ArchivedAt == null)
@@ -643,7 +735,10 @@ class RoomGrpcService(RoomDbContext db) : RoomGrpc.RoomGrpcBase
             {
                 m.Role,
                 m.Room.Name,
-                UserIds = m.Room.Members.Select(roomMember => roomMember.UserId).ToArray()
+                UserIds = m.Room.Members
+                    .Where(roomMember => !db.DeletedUsers.Any(
+                        deleted => deleted.UserId == roomMember.UserId))
+                    .Select(roomMember => roomMember.UserId).ToArray()
             })
             .FirstOrDefaultAsync(context.CancellationToken);
         var response = new IsMemberResponse
@@ -684,7 +779,10 @@ class RoomGrpcService(RoomDbContext db) : RoomGrpc.RoomGrpcBase
             .Select(r => new
             {
                 r.Name,
-                UserIds = r.Members.Select(member => member.UserId).ToArray()
+                UserIds = r.Members
+                    .Where(member => !db.DeletedUsers.Any(
+                        deleted => deleted.UserId == member.UserId))
+                    .Select(member => member.UserId).ToArray()
             })
             .FirstOrDefaultAsync(context.CancellationToken);
         if (room is null) return new RoomNotificationTargets { Found = false };
