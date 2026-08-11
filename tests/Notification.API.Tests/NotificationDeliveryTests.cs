@@ -35,21 +35,20 @@ public class NotificationDeliveryTests
     }
 
     [Fact]
-    public void StubProvider_IsRestrictedToTestEnvironment()
+    public void StubProvider_RequiresExplicitOptIn()
     {
-        var production = Configuration(new()
+        var disabled = Configuration(new()
         {
-            ["Notifications:Provider"] = "Stub",
-            ["ASPNETCORE_ENVIRONMENT"] = "Production"
+            ["Notifications:Provider"] = "Stub"
         });
-        Assert.Throws<InvalidOperationException>(() => NotificationOptions.Load(production));
+        Assert.Throws<InvalidOperationException>(() => NotificationOptions.Load(disabled));
 
-        var test = Configuration(new()
+        var enabled = Configuration(new()
         {
             ["Notifications:Provider"] = "Stub",
-            ["ASPNETCORE_ENVIRONMENT"] = "Test"
+            ["Notifications:AllowStub"] = "true"
         });
-        var options = NotificationOptions.Load(test);
+        var options = NotificationOptions.Load(enabled);
 
         Assert.True(options.Enabled);
         Assert.True(options.IsStub);
@@ -61,7 +60,7 @@ public class NotificationDeliveryTests
         var options = NotificationOptions.Load(Configuration(new()
         {
             ["Notifications:Provider"] = "Stub",
-            ["ASPNETCORE_ENVIRONMENT"] = "Test"
+            ["Notifications:AllowStub"] = "true"
         }));
         var sender = new SmtpNotificationSender(options);
 
