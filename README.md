@@ -11,7 +11,7 @@ Chat familiar distribuído baseado em React + .NET 8, com autenticação JWT, sa
 - **Message Service**: consumidor idempotente do evento e histórico REST.
 - **Notification Service**: consumidor do evento e registro de auditoria de notificação (o provedor real de push/email fica como extensão).
 - **Gateway**: YARP com CORS, rate limit e proxy de HTTP/WebSocket.
-- **Web**: React + TypeScript + Vite com registro/login, criação/listagem de salas, chat, convite por `PublicId` e histórico incremental por cursor ao rolar para cima.
+- **Web**: React + TypeScript + Vite com registro/login, criação/listagem de salas, chat, convite por `PublicId`, controles coerentes com Admin/Member/Muted e histórico incremental por cursor ao rolar para cima.
 - **Observabilidade**: OpenTelemetry Collector, Jaeger, Prometheus e Grafana.
 - **Smoke test**: k6 para registro, login, criação de sala e leitura autorizada do histórico, com latências separadas.
 

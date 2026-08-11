@@ -1,5 +1,6 @@
 export type AuthUser = { id: string; username: string; email: string }
 export type UserProfile = AuthUser & { publicId: string }
+export type RoomRole = 'Admin' | 'Member' | 'Muted'
 
 export type AuthResponse = {
   accessToken: string
@@ -13,7 +14,7 @@ export type Room = {
   description?: string
   ownerId: string
   membersCount: number
-  role: 'Admin' | 'Member' | 'Muted'
+  role: RoomRole
   createdAt: string
 }
 
@@ -31,6 +32,6 @@ export type RoomMember = {
   userId: string
   publicId: string
   username: string
-  role: string
+  role: RoomRole
   joinedAt: string
 }

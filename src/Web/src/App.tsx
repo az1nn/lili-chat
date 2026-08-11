@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api'
 import { useAuth } from './AuthContext'
 import { oldestPersistedCursor, prependHistory } from './history'
+import { canChangeAdminRole, canManageRoom, canModerateMember, canSendMessages } from './roomPermissions'
 import { useChat } from './useChat'
 import type { Room, Message, RoomMember, UserProfile } from './types'
 import './styles.css'
@@ -42,7 +43,7 @@ function AuthScreen() {
   </main>
 }
 
-function ChatPanel({ room, token, me, onRoomChanged, onRoomClosed }: {
+export function ChatPanel({ room, token, me, onRoomChanged, onRoomClosed }: {
   room: Room
   token: string
   me: string
@@ -58,6 +59,8 @@ function ChatPanel({ room, token, me, onRoomChanged, onRoomClosed }: {
   const [loadingOlder, setLoadingOlder] = useState(false)
   const loadingOlderRef = useRef(false)
   const messagesRef = useRef<HTMLDivElement>(null)
+  const managesRoom = canManageRoom(room)
+  const sendsMessages = canSendMessages(room)
 
   useEffect(() => {
     api<Message[]>(`/api/v1/messages/room/${room.id}?take=50`, {}, token)
@@ -189,16 +192,16 @@ function ChatPanel({ room, token, me, onRoomChanged, onRoomClosed }: {
         <h2>{room.name}</h2>
         <div className="muted">{chat.onlineUsers.length} online · {chat.status}</div>
         <div className="room-actions">
-          {room.role === 'Admin' && <button className="ghost compact" onClick={renameRoom}>Renomear</button>}
+          {managesRoom && <button className="ghost compact" onClick={renameRoom}>Renomear</button>}
           <button className="ghost compact danger" onClick={closeRoom}>
             {room.ownerId === me ? 'Arquivar' : 'Sair'}
           </button>
         </div>
       </div>
-      <form className="invite" onSubmit={addMember}>
+      {managesRoom && <form className="invite" onSubmit={addMember}>
         <input placeholder="PublicId do familiar" minLength={8} maxLength={8} required value={publicId} onChange={e => setPublicId(e.target.value.toUpperCase())} />
         <button>Adicionar</button>
-      </form>
+      </form>}
     </header>
 
     {error && <div className="error inline">{error}</div>}
@@ -213,25 +216,26 @@ function ChatPanel({ room, token, me, onRoomChanged, onRoomClosed }: {
         <small>
           {new Date(m.sentAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
           {m.senderId === me && m.status && ` · ${m.status}`}
-          {m.status === 'failed' && m.clientMessageId && <button className="retry" onClick={() => chat.retry(m.clientMessageId!)}>tentar novamente</button>}
+          {sendsMessages && m.status === 'failed' && m.clientMessageId && <button className="retry" onClick={() => chat.retry(m.clientMessageId!)}>tentar novamente</button>}
         </small>
       </div>)}
       {!chat.messages.length && <div className="empty">Nenhuma mensagem ainda.</div>}
     </div>
 
     <form className="composer" onSubmit={submit}>
-      <input placeholder="Digite uma mensagem..." maxLength={2000} required value={input} onChange={e => setInput(e.target.value)} />
-      <button disabled={chat.status !== 'connected'}>Enviar</button>
+      <input placeholder={sendsMessages ? 'Digite uma mensagem...' : 'Você está silenciado nesta sala'}
+        maxLength={2000} required disabled={!sendsMessages} value={input} onChange={e => setInput(e.target.value)} />
+      <button disabled={!sendsMessages || chat.status !== 'connected'}>Enviar</button>
     </form>
 
     <aside className="member-strip">
       {members.map(m => <span key={m.userId}>
         {m.username} · {m.role}
-        {room.role === 'Admin' && m.userId !== room.ownerId && m.userId !== me && <span className="member-actions">
+        {canModerateMember(room, me, m) && <span className="member-actions">
           {m.role === 'Muted'
             ? <button onClick={() => updateMemberRole(m, 'Member')}>desmutar</button>
             : <button onClick={() => updateMemberRole(m, 'Muted')}>silenciar</button>}
-          {room.ownerId === me && <button onClick={() => updateMemberRole(m, m.role === 'Admin' ? 'Member' : 'Admin')}>
+          {canChangeAdminRole(room, me, m) && <button onClick={() => updateMemberRole(m, m.role === 'Admin' ? 'Member' : 'Admin')}>
             {m.role === 'Admin' ? 'rebaixar' : 'admin'}
           </button>}
           <button onClick={() => removeMember(m)}>remover</button>
