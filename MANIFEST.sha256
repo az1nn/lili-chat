@@ -1,7 +1,7 @@
 3cb8b671d0fbaf91212cf8eb161969acea26578b9e2910ef11851a542f05a8e5  ./.config/dotnet-tools.json
 c16184fcc1a9f92e43d8f7bb079bb1c86d07d555071e87acbad16b0b83b83d14  ./.dockerignore
 9076f5c49ec38a43522b9e6003a845ad2d5c88a9fed9918de36c66216b089027  ./.env.example
-a02a9fd89ae73fcd05a42877c4eafbc7b0c5c4dbc1214444807b4c4b1fcde746  ./.github/workflows/ci.yml
+5cc3d96abb8b596a25d9ad00442e378a3efdf1c36c64e461d2071cf3c086845d  ./.github/workflows/ci.yml
 bbadc572275abfb0fa1e35d0dca9023133788362614a974387232c5ee7848a08  ./.gitignore
 e74389ff86d8ee6d24eb4c0d76aac9bbb0d0457d3d3f333f00489cfc50aa6111  ./AGENTS.md
 55d337167ae3b23153576b85589ebeb848672a4bfe6c812f1cd0748de9ce8a71  ./DEPLOYMENT.md
@@ -62,8 +62,8 @@ c672280d891d41b34405ff7748c7cad8f700fede5ddd769d5a6a8269039249d5  ./src/Services
 f3028ca12cf422211b82fb73faf1c21ac67f4ca8ffa5fa70037230e293e4166b  ./src/Services/Notification/Migrations/NotificationDbContextModelSnapshot.cs
 1d6ed8a3991d2990e88812211ee77b6f906337b96f88039f807225ec04ee2d74  ./src/Services/Notification/Notification.API.csproj
 b6e7943ae063c21a8d279efb9d63752230ef1e44b991f266092cbd02b8cbaf70  ./src/Services/Notification/NotificationDbContextFactory.cs
-6aeed2eb65a669f0bf949bf9e85ceef5b36f6515d3d10f2afa533a014e7ab47d  ./src/Services/Notification/NotificationDelivery.cs
-ffb8dd473db5878c2b334967a75c127a57610b34f913d20affec6e42461b1193  ./src/Services/Notification/Program.cs
+b7460789ae553cb96e2ac4b7a7bb615d663530abc3e047bbbdbae25b68121296  ./src/Services/Notification/NotificationDelivery.cs
+745a4fa8b7b8097d63ab61eea94e510bddce02937a3cfc054d3b026ca648a0f2  ./src/Services/Notification/Program.cs
 db746987ef31207b911da6db5c30b2ec33da99453df8848b44d32b4f39633c4c  ./src/Services/Notification/Properties/AssemblyInfo.cs
 a31cf67d92201f8eca2a98a0110dea1a55a5d1d342158f1a05a18b10aa5b085d  ./src/Services/RealtimeHub/Dockerfile
 642d5e59915fa92fb16b1e42e2a8b21a986317a81f2c130bc5a9a1212db1dd06  ./src/Services/RealtimeHub/Program.cs

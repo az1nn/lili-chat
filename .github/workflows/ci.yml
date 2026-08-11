@@ -126,7 +126,7 @@ jobs:
             ledger=$(docker compose exec -T postgres-notification psql \
               --username app --dbname notification \
               --tuples-only --no-align --field-separator='|' \
-              --command 'SELECT a."MessageId", a."Status", d."UserId", d."Status", d."Attempts", COALESCE(d."LastError", a."LastError") FROM notification_audit a LEFT JOIN notification_delivery d ON d."AuditId" = a."Id" ORDER BY a."CreatedAt" DESC;')
+              --command 'SELECT a."MessageId", a."Status", d."UserId", d."Status", d."Attempts", COALESCE(d."LastError", a."LastError"), (SELECT COUNT(*) FROM notification_contact) AS contacts FROM notification_audit a LEFT JOIN notification_delivery d ON d."AuditId" = a."Id" ORDER BY a."CreatedAt" DESC;')
             annotation=$(echo "$ledger" | tr '\n' ';' | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')
             echo "::error title=Notification delivery ledger::$annotation"
             docker compose logs --no-color --tail=200 notification-svc mailpit

@@ -133,6 +133,8 @@ static class NotificationFailure
 static class NotificationStatuses
 {
     public const string Queued = "queued";
+    public const string ResolvingTargets = "resolving-targets";
+    public const string Sending = "sending";
     public const string Delivered = "delivered";
     public const string Failed = "failed";
     public const string ProviderDisabled = "provider-disabled";

@@ -140,11 +140,26 @@ class MessageNotificationConsumer(
 
         if (audit.Deliveries.Count == 0)
         {
+            audit.Status = NotificationStatuses.ResolvingTargets;
+            audit.LastError = null;
+            await db.SaveChangesAsync(context.CancellationToken);
             try
             {
-                await CreateDeliveries(audit, e, context.CancellationToken);
+                using var targetTimeout = CancellationTokenSource.CreateLinkedTokenSource(
+                    context.CancellationToken);
+                targetTimeout.CancelAfter(TimeSpan.FromSeconds(10));
+                await CreateDeliveries(audit, e, targetTimeout.Token);
                 audit.Status = NotificationStatuses.Queued;
                 audit.LastError = null;
+            }
+            catch (OperationCanceledException ex) when (!context.CancellationToken.IsCancellationRequested)
+            {
+                audit.Status = NotificationStatuses.TargetResolutionFailed;
+                audit.LastError = NotificationFailure.SafeMessage(
+                    new TimeoutException("Notification target resolution exceeded 10 seconds.", ex));
+                FamilyChatMetrics.NotificationFailed.Add(1);
+                await db.SaveChangesAsync(context.CancellationToken);
+                throw new TimeoutException("Notification target resolution exceeded 10 seconds.", ex);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -164,6 +179,8 @@ class MessageNotificationConsumer(
         }
 
         Exception? failure = null;
+        audit.Status = NotificationStatuses.Sending;
+        await db.SaveChangesAsync(context.CancellationToken);
         foreach (var delivery in audit.Deliveries.Where(x => x.Status != NotificationStatuses.Delivered))
         {
             delivery.Attempts++;
