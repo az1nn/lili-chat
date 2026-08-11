@@ -5,6 +5,7 @@ Checks executed locally and in GitHub Actions through 2026-08-11:
 - `./scripts/check-structure.sh`: PASS
 - `docker compose config --quiet`: PASS
 - Compose services define readiness checks; CI uses `docker compose up --wait` before Playwright and k6
+- CI creates checksum-protected custom dumps for all five PostgreSQL owners, restores them into isolated `_restore_ci` databases, verifies schemas, and removes the drill databases
 - All .NET runtime Dockerfiles select the built-in non-root `app` user; the structure gate enforces this
 - `dotnet restore FamilyChat.sln`: PASS (NuGet audit disabled locally due feed latency)
 - `dotnet tool restore`: PASS; repository-pinned `dotnet-ef` 8.0.11 restored

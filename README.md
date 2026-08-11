@@ -57,6 +57,22 @@ O Prometheus carrega alertas versionados em `deploy/prometheus/rules/`: gap pers
 
 O Message Service retém mensagens por 365 dias por padrão e remove conteúdo expirado em lotes limitados. Ajuste `MESSAGE_RETENTION_DAYS` por ambiente; valores aceitos ficam entre 1 e 3650 dias. Tamanho, máximo de lotes e intervalo também são configuráveis no Compose por `MESSAGE_RETENTION_BATCH_SIZE`, `MESSAGE_RETENTION_MAX_BATCHES` e `MESSAGE_RETENTION_INTERVAL_MINUTES`. Falhas de limpeza geram métrica e alerta, sem impedir leitura ou persistência do chat.
 
+### Backup e restore
+
+Cada bounded context gera um dump PostgreSQL próprio e consistente. O diretório de destino deve estar vazio; o script grava dumps em formato custom e um manifesto `SHA256SUMS`:
+
+```bash
+./scripts/backup-databases.sh ./backups/$(date +%Y%m%d-%H%M%S)
+```
+
+O restore nunca aceita os nomes dos bancos ativos. Ele exige um sufixo `_restore_*`, valida todos os checksums, restaura em bancos isolados e confirma que há tabelas públicas:
+
+```bash
+./scripts/restore-databases.sh ./backups/20260811-120000 _restore_drill
+```
+
+Defina `CLEANUP_RESTORED_DATABASES=1` para remover os bancos temporários depois do drill. A CI executa backup e restore dos cinco bancos após o E2E; armazene dumps reais fora da máquina de origem, criptografados e com controle de acesso.
+
 O access token permanece somente em memória no navegador. O refresh token usa cookie `HttpOnly`; em produção ele também exige HTTPS para que o atributo `Secure` funcione.
 
 Handlers validam os mesmos limites definidos no schema: username até 100, email até 255, senha até 128, nomes de sala/família até 100, descrições até 1000 e mensagens até 2000 caracteres. O frontend replica esses limites apenas para feedback imediato; o backend continua sendo a autoridade.

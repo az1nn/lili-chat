@@ -1,12 +1,12 @@
 3cb8b671d0fbaf91212cf8eb161969acea26578b9e2910ef11851a542f05a8e5  ./.config/dotnet-tools.json
 c16184fcc1a9f92e43d8f7bb079bb1c86d07d555071e87acbad16b0b83b83d14  ./.dockerignore
 8b881d47593579ea5b2eb138e2ed03eeb76d405c171c667cf5b98c24f61753ad  ./.env.example
-2a8f1e1fe9ae3d4ad9ae9d23b89c14e78d508ac619b6695c15cf5cdea82dcdac  ./.github/workflows/ci.yml
+e11df09e54572c2b0636657efc086ef70dc6d4e0b22d10f12ca6da7e3c5a96c9  ./.github/workflows/ci.yml
 bbadc572275abfb0fa1e35d0dca9023133788362614a974387232c5ee7848a08  ./.gitignore
 e74389ff86d8ee6d24eb4c0d76aac9bbb0d0457d3d3f333f00489cfc50aa6111  ./AGENTS.md
 8484811bd25d8b189ca738d5fa4cf5dadc3e81d414f86fffa17b89877a9f402f  ./FamilyChat.sln
-00887fcf685485724600245c2a9b3518adea703431b854305985f1fcec8a7392  ./README.md
-5f7dd539d16922a1e7d54df3b17d4b364ea04108a6507345a1dacaa7524325e3  ./VALIDATION.md
+9247cec5d6e39a2858535b433da42196bc9dc43f48b3e24a91da8d2ea25c8905  ./README.md
+413ff3ec555fc254c141b7ff7e023581eab96ca683cd9928928d3770b3614ad6  ./VALIDATION.md
 02d5f113b367836c4d8000946c3f71ce42830bdec13708ad1387551c836e561a  ./deploy/grafana/provisioning/dashboards/family-chat.json
 802c7ce9fbfe5fac986d57b3f4fce0ae6470b5a3151bcf5cce6065eea45ce347  ./deploy/grafana/provisioning/dashboards/provider.yml
 20d45a357cc7ae559b60b0c17b49f714a24266bd0a92f26b89070d3e14c1a80e  ./deploy/grafana/provisioning/datasources/datasource.yml
@@ -15,8 +15,10 @@ e74389ff86d8ee6d24eb4c0d76aac9bbb0d0457d3d3f333f00489cfc50aa6111  ./AGENTS.md
 7e5b7114f21094cb47947eca1beab4318a9e0409dd380c552b08dec3e389c3b5  ./deploy/prometheus/prometheus.yml
 d3ded5ed2db24e99839a0d3812410c3ec1385f14c3a17749c3a0873c5469c05a  ./deploy/prometheus/rules/family-chat.yml
 0cc3a96bbd4c1c1ef781d320be1e65db8952479dfce62c0c1f9fb2620e523e26  ./docker-compose.yml
+5280da23b9bb8c410cb395fdc8f534f0e4a477f9c84fbc63b3f6920e47a80bc6  ./scripts/backup-databases.sh
 d60270a4dff30afa64f431eec5cef62b96916d9e3ca4d4812e3cf77cec4d9838  ./scripts/check-migrations.sh
-7f1b017ae215fd33588861ba449e51f35d1ecc7a28220b28f725190b4d2f4ee8  ./scripts/check-structure.sh
+f0b5da63f432888e84c9667aa8612b84400d13b1e7ad57b7df38b246aee506ea  ./scripts/check-structure.sh
+55524697de3bbc2b9345692d8adb160e1b4ffe988c6f739dc0d7c545a7ca4637  ./scripts/restore-databases.sh
 59fa6a64740ca44c8b8196fb6ed914f14c5194845208e4954755edb58f9d213a  ./src/.dockerignore
 6aa568f12f6f518cf49ae195de763e51b4b849025b0f3777858785b4db4a0803  ./src/Gateway/Dockerfile
 1d85de5e7c2469eaf849c0b6c40ae920026fca7e7f432768e1d856864be2a4a5  ./src/Gateway/Gateway.csproj

@@ -17,6 +17,9 @@ fi
 test -f src/Web/tests/e2e/chat-flow.spec.ts
 test -f tests/Persistence.IntegrationTests/PostgresMigrationTests.cs
 test -x scripts/check-migrations.sh
+test -x scripts/backup-databases.sh
+test -x scripts/restore-databases.sh
+grep -q '_restore_\[a-z0-9_\]' scripts/restore-databases.sh
 test -f tests/Identity.API.Tests/IdentityInputTests.cs
 test -f tests/FamilyGraph.API.Tests/FamilyInputTests.cs
 test -f tests/Message.API.Tests/MessageRetentionPolicyTests.cs

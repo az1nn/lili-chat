@@ -115,6 +115,13 @@ jobs:
       - name: Run k6 smoke test
         run: docker compose --profile test run --rm k6
 
+      - name: Drill database backup and restore
+        run: |
+          backup_dir=$(mktemp -d)
+          ./scripts/backup-databases.sh "$backup_dir"
+          CLEANUP_RESTORED_DATABASES=1 \
+            ./scripts/restore-databases.sh "$backup_dir" _restore_ci
+
       - name: Capture container logs
         if: failure()
         run: docker compose logs --no-color --tail=300
