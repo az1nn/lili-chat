@@ -95,6 +95,8 @@ a4e2f8aea5f5d3ef65da2ef872cb46729e4bba9df77767c09f2d6111d8e08a00  ./src/Web/src/
 70488f59372d69a55b8fd6afe44ba1e98dce3d0a2da98cecec42bed7b55a802a  ./src/Web/src/ChatPanel.test.tsx
 fe44822af03936881b49118926f24a79883d12badcab4887d573bf03a4e3a7bc  ./src/Web/src/api.test.ts
 fb9cbfa596d9d38b06fb80e95244e889d8b592b01e3843b7a4c1a493f0644de2  ./src/Web/src/api.ts
+ac1d5c362c26d18aedc99d33dcca405cf7eb76bed1a3182bfd694bd85d77466d  ./src/Web/src/chatReconciliation.test.ts
+eb9dbf4f6698da98de70bc21d9374ab82ca23d7acaf507dd1fe4949987dd5ded  ./src/Web/src/chatReconciliation.ts
 6145ebecb20332d80b992e8b446ec900d8b7ad35f16ceceafc60a2fbe0ee38c8  ./src/Web/src/history.test.ts
 e8e695d7d0fa393b9fb4784d39542202f03210d67ca142d12215c5ee7b84f787  ./src/Web/src/history.ts
 27cc0eb250548d91fcb7d7e333f544567b0e8753a526045fb0c40a1afa0ee1eb  ./src/Web/src/main.tsx
@@ -105,7 +107,7 @@ b692ccd34b4a51665db304f5efbda9038396de740e9207c4881f889dbce70acc  ./src/Web/src/
 ae917aa32c6e22678a55a595d0e206945e681797c50b29d36c6da565e0a4ab51  ./src/Web/src/styles.css
 4c7461e4d5a6d9533c4952a076cf0991a83c9f7271008bba1c980158064812b5  ./src/Web/src/test/setup.ts
 32db39853f4229e4f54240cc0326e40104a3865dc0ebde7c0a8d5b1cf4077a69  ./src/Web/src/types.ts
-a4fd19c4a4e3f002909369730dadd96b1f029bc45c217c8ed86f8b5db3597bf5  ./src/Web/src/useChat.ts
+28fcfb41674a7d47a48b5b731d4293217bf49e7e157d6540a746f97ec56dad55  ./src/Web/src/useChat.ts
 a5b680e45d42a0b484a02a33af1f005002648193e4a89e369ec8a0b0a4b5ed4e  ./src/Web/tests/e2e/chat-flow.spec.ts
 8ad325eaae7d08346adc88a64207f79d4158e527e37118ac3148fbecac9fa62d  ./src/Web/tsconfig.app.json
 770b4140bbb581e2dfd9ea9946ffc9c75a1d86ba7d2db5f77c83e37cbdf9d808  ./src/Web/tsconfig.json
