@@ -38,6 +38,8 @@ button:disabled { opacity: .5; cursor: default; }
 .profile { display: grid; gap: 4px; padding: 14px; background: #131a30; border-radius: 14px; }
 .profile span { color: #8e97b6; font-size: 12px; }
 .profile code { margin-top: 5px; color: #9fa8ff; font-size: 12px; overflow-wrap: anywhere; }
+.profile-sync-error { display: grid; gap: 6px; margin-top: 5px; }
+.profile-sync-error button { justify-self: start; }
 .new-room { display: grid; grid-template-columns: 1fr 44px; gap: 7px; }
 .sidebar nav { display: grid; gap: 7px; overflow-y: auto; }
 .room-button { text-align: left; background: transparent; border: 1px solid transparent; display: grid; gap: 4px; }

@@ -10,7 +10,7 @@ async function register(context: BrowserContext, username: string, email: string
   await page.getByRole('button', { name: 'Criar conta', exact: true }).click()
   await expect(page.locator('.profile')).toContainText(username)
   await expect.poll(async () => page.locator('.profile code').textContent(), { timeout: 30_000 })
-    .not.toContain('sincronizando')
+    .toMatch(/^[A-HJ-NP-Z2-9]{8}$/)
   return page
 }
 

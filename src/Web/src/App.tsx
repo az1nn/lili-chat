@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api'
 import { useAuth } from './AuthContext'
 import { oldestPersistedCursor, prependHistory } from './history'
+import { waitForProfileProjection } from './profileProjection'
 import { canChangeAdminRole, canManageRoom, canModerateMember, canSendMessages } from './roomPermissions'
 import { useChat } from './useChat'
 import type { Room, Message, RoomMember, UserProfile } from './types'
@@ -251,6 +252,8 @@ function Workspace() {
   const [rooms, setRooms] = useState<Room[]>([])
   const [selected, setSelected] = useState<Room | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [profileState, setProfileState] = useState<'loading' | 'ready' | 'timeout' | 'error'>('loading')
+  const [profileRetry, setProfileRetry] = useState(0)
   const [name, setName] = useState('')
   const [error, setError] = useState('')
 
@@ -263,22 +266,27 @@ function Workspace() {
 
   useEffect(() => {
     if (!token) return
-    let cancelled = false
     loadRooms().catch(e => setError(e.message))
-    ;(async () => {
-      for (let attempt = 0; attempt < 10 && !cancelled; attempt++) {
-        try {
-          const value = await api<UserProfile>('/api/v1/users/me', {}, token)
-          if (!cancelled) setProfile(value)
-          return
-        } catch {
-          if (!cancelled) setProfile(null)
-          await new Promise(resolve => setTimeout(resolve, Math.min(1000 * (attempt + 1), 5000)))
-        }
-      }
-    })()
-    return () => { cancelled = true }
   }, [token])
+
+  useEffect(() => {
+    if (!token) return
+    const controller = new AbortController()
+    setProfile(null)
+    setProfileState('loading')
+    waitForProfileProjection(token, { signal: controller.signal })
+      .then(value => {
+        if (controller.signal.aborted) return
+        setProfile(value)
+        setProfileState(value ? 'ready' : 'timeout')
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setProfileState('error')
+        }
+      })
+    return () => controller.abort()
+  }, [token, profileRetry])
 
   async function createRoom(e: FormEvent) {
     e.preventDefault()
@@ -311,7 +319,12 @@ function Workspace() {
       <div className="profile">
         <strong>{user?.username}</strong>
         <span>{user?.email}</span>
-        <code>{profile?.publicId || 'PublicId sincronizando...'}</code>
+        {profileState === 'ready' && <code>{profile?.publicId}</code>}
+        {profileState === 'loading' && <code role="status">Preparando seu PublicId...</code>}
+        {(profileState === 'timeout' || profileState === 'error') && <div className="profile-sync-error">
+          <span>{profileState === 'timeout' ? 'Perfil ainda não sincronizado.' : 'Não foi possível carregar o perfil.'}</span>
+          <button className="ghost compact" onClick={() => setProfileRetry(value => value + 1)}>Tentar novamente</button>
+        </div>}
       </div>
 
       <form className="new-room" onSubmit={createRoom}>

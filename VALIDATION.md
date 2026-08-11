@@ -15,11 +15,12 @@ Checks executed locally and in GitHub Actions through 2026-08-11:
 - NuGet vulnerability audit: no known vulnerable direct or transitive packages across runtime and test projects after upgrading OpenTelemetry to 1.17.0, pinning MessagePack 2.5.302, aligning EF Core/Npgsql EF/dotnet-ef on 8.0.11, and updating xUnit to 2.9.3 with its Visual Studio runner 3.1.5
 - `npm ci`: PASS
 - `npm run typecheck`: PASS
-- `npm test`: PASS, 13 React/API/history/authorization tests across 5 files
+- `npm test`: PASS, 17 React/API/history/authorization/projection tests across 6 files
 - `npm run build`: PASS
 - Nginx configuration uses the query-free `familychat_safe` access-log format; CI validates syntax with `nginx -t`
 - `npx playwright test --list`: PASS, two-user E2E discovered and transpiled
 - The E2E requires a live `accepted` → `persisted` acknowledgement before validating persistence after reload
+- Registration waits for a syntactically valid projected `PublicId`; the frontend retries only projection `404` responses with bounded exponential backoff
 - The E2E requires an actively connected removed member to be evicted from the SignalR room without reloading
 - The E2E requires mute/unmute role changes to update an actively connected member's composer without reloading
 - `node --check deploy/k6/smoke.js`: PASS; the smoke gate measures register, login, room creation, and authorized history independently

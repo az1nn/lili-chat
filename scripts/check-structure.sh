@@ -15,6 +15,7 @@ if grep -Eq '\$(request_uri|args|query_string)([^A-Za-z_]|$)' src/Web/nginx.conf
   exit 1
 fi
 test -f src/Web/tests/e2e/chat-flow.spec.ts
+test -f src/Web/src/profileProjection.test.ts
 test -f tests/Persistence.IntegrationTests/PostgresMigrationTests.cs
 test -x scripts/check-migrations.sh
 test -x scripts/backup-databases.sh

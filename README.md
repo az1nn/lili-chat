@@ -11,7 +11,7 @@ Chat familiar distribuído baseado em React + .NET 8, com autenticação JWT, sa
 - **Message Service**: consumidor idempotente do evento, histórico REST e retenção configurável em lotes.
 - **Notification Service**: consumidor do evento e registro de auditoria de notificação (o provedor real de push/email fica como extensão).
 - **Gateway**: YARP com CORS, rate limit e proxy de HTTP/WebSocket.
-- **Web**: React + TypeScript + Vite com registro/login, criação/listagem de salas, chat, convite por `PublicId`, controles coerentes com Admin/Member/Muted e histórico incremental por cursor ao rolar para cima.
+- **Web**: React + TypeScript + Vite com registro/login, criação/listagem de salas, chat, convite por `PublicId`, sincronização eventual visível do perfil, controles coerentes com Admin/Member/Muted e histórico incremental por cursor ao rolar para cima.
 - **Observabilidade**: OpenTelemetry Collector, Jaeger, Prometheus e Grafana.
 - **Smoke test**: k6 para registro, login, criação de sala e leitura autorizada do histórico, com latências separadas.
 
@@ -114,7 +114,7 @@ As APIs gRPC internas exigem credenciais distintas por destino: `INTERNAL_FAMILY
 6. Entre na mesma sala com os dois usuários e envie mensagens.
 7. Verifique o RabbitMQ e o Jaeger.
 
-A criação do `PublicId` é assíncrona: o Identity publica `UserRegisteredEvent` e o Family Graph cria a projeção. Em uma máquina local isso costuma ocorrer rapidamente. Se `/users/me` retornar 404 logo após o registro, atualize alguns instantes depois.
+A criação do `PublicId` é assíncrona: o Identity publica `UserRegisteredEvent` e o Family Graph cria a projeção. O frontend mostra o estado de preparação e repete somente respostas `404`, com backoff limitado. Se a projeção não surgir dentro da janela, oferece nova tentativa manual; falhas de autenticação ou indisponibilidade não são mascaradas como atraso de sincronização.
 
 ## Testes
 

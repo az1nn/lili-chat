@@ -9,6 +9,13 @@ type AuthHandlers = {
 let authHandlers: AuthHandlers | null = null
 let refreshInFlight: Promise<string | null> | null = null
 
+export class ApiError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
 export function configureApiAuth(handlers: AuthHandlers) {
   authHandlers = handlers
 }
@@ -43,7 +50,7 @@ export async function api<T>(
       const body = await res.json()
       message = body.error || body.title || message
     } catch {}
-    throw new Error(message)
+    throw new ApiError(res.status, message)
   }
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
