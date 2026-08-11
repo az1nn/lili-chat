@@ -51,6 +51,8 @@ Microsoft documents WSL installation with `wsl --install`; Docker documents enab
    docker compose --profile test run --rm k6
    ```
 
+   The CI-only outage suite (`npm run test:resilience`) deliberately stops and restarts RabbitMQ, Redis, Realtime Hub, and Room Service. Run it only against an isolated disposable Compose stack.
+
 To inspect email locally, set the following values in `.env`, start with `COMPOSE_PROFILES=notification-test docker compose up --detach --build --wait`, and open `http://localhost:8025`:
 
 ```dotenv

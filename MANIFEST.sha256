@@ -1,10 +1,10 @@
 3cb8b671d0fbaf91212cf8eb161969acea26578b9e2910ef11851a542f05a8e5  ./.config/dotnet-tools.json
 c16184fcc1a9f92e43d8f7bb079bb1c86d07d555071e87acbad16b0b83b83d14  ./.dockerignore
 9076f5c49ec38a43522b9e6003a845ad2d5c88a9fed9918de36c66216b089027  ./.env.example
-aaa3b7bbb229a08c8cdd2422f38c19a7a24fbddec05d7d228a11d857a26f99cb  ./.github/workflows/ci.yml
+7253dc28f5cfc1eec64749807a750234c2fa0cdf00c2b61fdcd3fb0b75b50b82  ./.github/workflows/ci.yml
 bbadc572275abfb0fa1e35d0dca9023133788362614a974387232c5ee7848a08  ./.gitignore
 e74389ff86d8ee6d24eb4c0d76aac9bbb0d0457d3d3f333f00489cfc50aa6111  ./AGENTS.md
-d75f5bf2b231f3a1554b0b562b5ceaa7e0d679cd0d79cfec0350b6fe6272fd4d  ./DEPLOYMENT.md
+6482889c423d2f8133ec882f6b2bd40718236be7d876dc0e577df77c109d9e71  ./DEPLOYMENT.md
 5b866cccbd355fefcfeb908beac99ef5e97ddad9676fee1d136c063384f7a2e9  ./FamilyChat.sln
 8f25f55c58b8cebae8406313e1cd2e7d76ef8c83c7397ad78a24f69d003d4be7  ./README.md
 849cde782702e5d7fc3813859aff513d6746a12b47ef0a35a3ca22f31f400777  ./VALIDATION.md
@@ -96,7 +96,7 @@ b9f7af7f2281ed03ab9e8542d1c6e5d6a9b85ecc17466ed63c08044553e78c16  ./src/Shared/F
 b264f53eef4835124129c985e740eca7c0e1ff44e5793da81e0ed2d6ca4db137  ./src/Web/index.html
 886d72370faa2b43a15ad7abe358913ca39fe15a93fc3c7d112a6eb95bc8a1e7  ./src/Web/nginx.conf
 ffab6ac3b49f656626181eba20db5bbb63e7bbb9e0a9a33949849ed682da8e9c  ./src/Web/package-lock.json
-ac6fe462c3d39859fde2a7932995c3d46fdf148866c6c675d488979cde5f075f  ./src/Web/package.json
+f3b66882124affa76fe6bc18154d2cab86dcf08b55b6e24706caa067915e00d3  ./src/Web/package.json
 d11b9fa4174a18334d563f93004abbad7785037456746dbcec10785f9d54a479  ./src/Web/playwright.config.ts
 b88ae69d56eff4b26a80c70835e7d66f1202000da6533529d2aaa19f21f8ae06  ./src/Web/src/App.test.tsx
 306bd9480d689cb00bab9ce3ac764b035cb7dc459d50a06634c838bddc80d7b3  ./src/Web/src/App.tsx
@@ -118,6 +118,7 @@ ae917aa32c6e22678a55a595d0e206945e681797c50b29d36c6da565e0a4ab51  ./src/Web/src/
 32db39853f4229e4f54240cc0326e40104a3865dc0ebde7c0a8d5b1cf4077a69  ./src/Web/src/types.ts
 28fcfb41674a7d47a48b5b731d4293217bf49e7e157d6540a746f97ec56dad55  ./src/Web/src/useChat.ts
 4f5ceefb7801f474de49b41457d6025bb792f687d0f3e50be4cec9ef4c007f4d  ./src/Web/tests/e2e/chat-flow.spec.ts
+8d4065a317f25f84dcd3dce353688afcf6ffd2e96f2a03fb45b12691cc61ee66  ./src/Web/tests/e2e/resilience-flow.spec.ts
 8ad325eaae7d08346adc88a64207f79d4158e527e37118ac3148fbecac9fa62d  ./src/Web/tsconfig.app.json
 770b4140bbb581e2dfd9ea9946ffc9c75a1d86ba7d2db5f77c83e37cbdf9d808  ./src/Web/tsconfig.json
 e6873430eb3551cf5c6b0bcfaa8496ffca83be84292f408bc8b49bb2ebdef49f  ./src/Web/tsconfig.node.json
