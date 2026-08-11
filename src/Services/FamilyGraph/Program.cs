@@ -38,6 +38,7 @@ var rabbitMq = RabbitMqCredentials.Load(
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<UserRegisteredConsumer>();
+    x.AddConsumer<UserDeletedConsumer>();
     x.UsingRabbitMq((ctx, cfg) =>
     {
         cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "rabbitmq", "/", h =>
@@ -45,6 +46,7 @@ builder.Services.AddMassTransit(x =>
             h.Username(rabbitMq.Username);
             h.Password(rabbitMq.Password);
         });
+        cfg.UseMessageRetry(retry => retry.Interval(5, TimeSpan.FromSeconds(1)));
         cfg.ConfigureEndpoints(ctx);
     });
 });
@@ -241,6 +243,7 @@ class FamilyDbContext(DbContextOptions<FamilyDbContext> options) : DbContext(opt
     public DbSet<UserProjection> Users => Set<UserProjection>();
     public DbSet<FamilyEntity> Families => Set<FamilyEntity>();
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
+    public DbSet<DeletedUser> DeletedUsers => Set<DeletedUser>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -261,7 +264,15 @@ class FamilyDbContext(DbContextOptions<FamilyDbContext> options) : DbContext(opt
             .HasForeignKey(x => x.FamilyId).OnDelete(DeleteBehavior.Cascade);
         b.Entity<FamilyMember>().HasOne(x => x.User).WithMany(x => x.Families)
             .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+
+        b.Entity<DeletedUser>().ToTable("deleted_users").HasKey(x => x.UserId);
     }
+}
+
+class DeletedUser
+{
+    public Guid UserId { get; set; }
+    public DateTimeOffset DeletedAt { get; set; }
 }
 
 class UserRegisteredConsumer(FamilyDbContext db, ILogger<UserRegisteredConsumer> logger)
@@ -270,26 +281,51 @@ class UserRegisteredConsumer(FamilyDbContext db, ILogger<UserRegisteredConsumer>
     public async Task Consume(ConsumeContext<UserRegisteredEvent> context)
     {
         var e = context.Message;
-        if (await db.Users.AnyAsync(u => u.Id == e.UserId, context.CancellationToken))
-            return;
+        await using var userLock = await PostgresAdvisoryLock.TryAcquireAsync(
+            db.Database.GetDbConnection(), FamilyUserDeletion.LockKey(e.UserId),
+            context.CancellationToken)
+            ?? throw new InvalidOperationException($"User projection {e.UserId} is being changed.");
+        var result = await UserProjectionRegistration.ApplyAsync(
+            db, e, context.CancellationToken);
+        if (result == ProjectionRegistrationResult.Deleted)
+            logger.LogInformation("Late UserRegisteredEvent ignored for deleted user {UserId}", e.UserId);
+        else if (result == ProjectionRegistrationResult.Existing)
+            logger.LogInformation("Duplicate UserRegisteredEvent ignored for {UserId}", e.UserId);
+        else
+            logger.LogInformation("User projection created for {UserId}", e.UserId);
+    }
+}
+
+enum ProjectionRegistrationResult { Created, Existing, Deleted }
+
+static class UserProjectionRegistration
+{
+    public static async Task<ProjectionRegistrationResult> ApplyAsync(
+        FamilyDbContext db, UserRegisteredEvent message, CancellationToken ct)
+    {
+        if (await db.DeletedUsers.AnyAsync(deleted => deleted.UserId == message.UserId, ct))
+            return ProjectionRegistrationResult.Deleted;
+        if (await db.Users.AnyAsync(user => user.Id == message.UserId, ct))
+            return ProjectionRegistrationResult.Existing;
 
         string publicId;
         do
         {
             publicId = GeneratePublicId();
-        } while (await db.Users.AnyAsync(u => u.PublicId == publicId, context.CancellationToken));
+        } while (await db.Users.AnyAsync(user => user.PublicId == publicId, ct));
 
         db.Users.Add(new UserProjection
         {
-            Id = e.UserId,
+            Id = message.UserId,
             PublicId = publicId,
-            Username = e.Username,
-            Email = e.Email,
-            CreatedAt = DateTimeOffset.UtcNow
+            Username = message.Username,
+            Email = message.Email,
+            CreatedAt = message.OccurredAt
         });
         try
         {
-            await db.SaveChangesAsync(context.CancellationToken);
+            await db.SaveChangesAsync(ct);
+            return ProjectionRegistrationResult.Created;
         }
         catch (DbUpdateException ex) when (
             ex.InnerException is PostgresException
@@ -299,10 +335,8 @@ class UserRegisteredConsumer(FamilyDbContext db, ILogger<UserRegisteredConsumer>
             })
         {
             db.ChangeTracker.Clear();
-            logger.LogInformation("Duplicate UserRegisteredEvent ignored for {UserId}", e.UserId);
-            return;
+            return ProjectionRegistrationResult.Existing;
         }
-        logger.LogInformation("User projection created {UserId} -> {PublicId}", e.UserId, publicId);
     }
 
     static string GeneratePublicId()
@@ -312,6 +346,75 @@ class UserRegisteredConsumer(FamilyDbContext db, ILogger<UserRegisteredConsumer>
         for (var i = 0; i < chars.Length; i++)
             chars[i] = alphabet[RandomNumberGenerator.GetInt32(alphabet.Length)];
         return new string(chars);
+    }
+}
+
+class UserDeletedConsumer(
+    FamilyDbContext db,
+    ILogger<UserDeletedConsumer> logger) : IConsumer<UserDeletedEvent>
+{
+    public async Task Consume(ConsumeContext<UserDeletedEvent> context)
+    {
+        var message = context.Message;
+        await using var userLock = await PostgresAdvisoryLock.TryAcquireAsync(
+            db.Database.GetDbConnection(), FamilyUserDeletion.LockKey(message.UserId),
+            context.CancellationToken)
+            ?? throw new InvalidOperationException($"User projection {message.UserId} is being changed.");
+        var changed = await FamilyUserDeletion.ApplyAsync(
+            db, message.UserId, message.OccurredAt, context.CancellationToken);
+        logger.LogInformation(
+            changed
+                ? "Deleted Family Graph projection for user {UserId}"
+                : "Duplicate UserDeletedEvent ignored for {UserId}",
+            message.UserId);
+    }
+}
+
+static class FamilyUserDeletion
+{
+    public static long LockKey(Guid userId) =>
+        BitConverter.ToInt64(userId.ToByteArray());
+
+    public static async Task<bool> ApplyAsync(
+        FamilyDbContext db, Guid userId, DateTimeOffset deletedAt, CancellationToken ct)
+    {
+        if (await db.DeletedUsers.AnyAsync(x => x.UserId == userId, ct))
+            return false;
+
+        var memberships = await db.FamilyMembers
+            .Include(member => member.Family)
+            .ThenInclude(family => family.Members)
+            .Where(member => member.UserId == userId)
+            .ToListAsync(ct);
+
+        foreach (var membership in memberships)
+        {
+            var remaining = membership.Family.Members
+                .Where(member => member.UserId != userId)
+                .OrderBy(member => member.JoinedAt)
+                .ThenBy(member => member.Id)
+                .ToList();
+            if (remaining.Count == 0)
+            {
+                db.Families.Remove(membership.Family);
+                continue;
+            }
+            if (membership.Role == "Head" && remaining.All(member => member.Role != "Head"))
+                remaining[0].Role = "Head";
+        }
+
+        var projection = await db.Users.FindAsync([userId], ct);
+        if (projection is not null)
+            db.Users.Remove(projection);
+
+        foreach (var member in await db.FamilyMembers
+                     .Where(member => member.AddedById == userId && member.UserId != userId)
+                     .ToListAsync(ct))
+            member.AddedById = Guid.Empty;
+
+        db.DeletedUsers.Add(new DeletedUser { UserId = userId, DeletedAt = deletedAt });
+        await db.SaveChangesAsync(ct);
+        return true;
     }
 }
 

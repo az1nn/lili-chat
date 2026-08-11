@@ -163,6 +163,13 @@ jobs:
           CLEANUP_RESTORED_DATABASES=1 \
             ./scripts/restore-databases.sh "$backup_dir" _restore_ci
 
+      - name: Run dependency outage and recovery flow
+        id: resilience
+        if: ${{ always() && !cancelled() && steps.stack.outcome == 'success' }}
+        continue-on-error: true
+        working-directory: src/Web
+        run: npm run test:resilience
+
       - name: Assert distributed checks
         if: ${{ always() && !cancelled() && steps.stack.outcome == 'success' }}
         run: |
@@ -171,7 +178,8 @@ jobs:
             "browser:${{ steps.browser.outcome }}" \
             "notification:${{ steps.notification.outcome }}" \
             "k6:${{ steps.k6.outcome }}" \
-            "backup:${{ steps.backup.outcome }}"; do
+            "backup:${{ steps.backup.outcome }}" \
+            "resilience:${{ steps.resilience.outcome }}"; do
             name=${result%%:*}
             outcome=${result#*:}
             if [ "$outcome" != success ]; then

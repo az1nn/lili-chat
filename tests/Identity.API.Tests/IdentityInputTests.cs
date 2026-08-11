@@ -1,6 +1,34 @@
 public class IdentityInputTests
 {
     [Fact]
+    public void AccountDeletion_ConfirmsOnlyCurrentPassword()
+    {
+        var user = new AppUser { Id = Guid.NewGuid() };
+        var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<AppUser>();
+        user.PasswordHash = hasher.HashPassword(user, "StrongPassword!123");
+
+        Assert.True(AccountDeletion.ConfirmPassword(hasher, user, "StrongPassword!123"));
+        Assert.False(AccountDeletion.ConfirmPassword(hasher, user, "WrongPassword!123"));
+        Assert.False(AccountDeletion.ConfirmPassword(hasher, user, null));
+    }
+
+    [Fact]
+    public void IdentityOutbox_DeserializesUserDeletion()
+    {
+        var expected = new FamilyChat.Contracts.Events.UserDeletedEvent(
+            Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow);
+        var message = OutboxMessage.Create(
+            expected.CorrelationId,
+            nameof(FamilyChat.Contracts.Events.UserDeletedEvent),
+            expected);
+
+        var actual = Assert.IsType<FamilyChat.Contracts.Events.UserDeletedEvent>(
+            IdentityOutbox.Deserialize(message));
+
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
     public void Registration_NormalizesValidInput()
     {
         var valid = IdentityInput.TryRegistration(

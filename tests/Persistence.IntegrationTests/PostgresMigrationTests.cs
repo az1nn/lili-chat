@@ -135,11 +135,78 @@ public sealed class PostgresMigrationTests(PostgresFixture fixture) : IClassFixt
         Assert.Equal(0, await verificationDb.RefreshTokens.CountAsync(
             token => token.FamilyId == logoutFamilyId && token.RevokedAt == null));
 
+        var deletionEvent = await AccountDeletion.DeleteAsync(
+            verificationDb,
+            await verificationDb.Users.SingleAsync(user => user.Id == userId),
+            CancellationToken.None);
+        verificationDb.ChangeTracker.Clear();
+        Assert.False(await verificationDb.Users.AnyAsync(user => user.Id == userId));
+        var deletionOutbox = await verificationDb.OutboxMessages.SingleAsync(
+            message => message.Id == deletionEvent.CorrelationId);
+        Assert.Equal(nameof(UserDeletedEvent), deletionOutbox.Type);
+        Assert.Equal(deletionEvent, Assert.IsType<UserDeletedEvent>(
+            IdentityOutbox.Deserialize(deletionOutbox)));
+
         await using var family = new FamilyDbContext(Options<FamilyDbContext>("family_test"));
         await family.Database.MigrateAsync();
         Assert.Empty(await family.Database.GetPendingMigrationsAsync());
         Assert.Equal(0, await family.Users.CountAsync());
         Assert.Equal(0, await family.Families.CountAsync());
+        Assert.Equal(0, await family.DeletedUsers.CountAsync());
+
+        var deletedFamilyUserId = Guid.NewGuid();
+        var successorId = Guid.NewGuid();
+        var otherMemberId = Guid.NewGuid();
+        var sharedFamilyId = Guid.NewGuid();
+        var emptyFamilyId = Guid.NewGuid();
+        var joinedAt = DateTimeOffset.UtcNow.AddDays(-2);
+        family.Users.AddRange(
+            FamilyUser(deletedFamilyUserId, "DELETED2", "deleted"),
+            FamilyUser(successorId, "SUCCESS2", "successor"),
+            FamilyUser(otherMemberId, "OTHERM22", "other"));
+        family.Families.AddRange(
+            new FamilyEntity
+            {
+                Id = sharedFamilyId, Name = "Shared", CreatedAt = joinedAt,
+                Members =
+                [
+                    FamilyMember(sharedFamilyId, deletedFamilyUserId, "Head", deletedFamilyUserId, joinedAt),
+                    FamilyMember(sharedFamilyId, successorId, "Member", deletedFamilyUserId, joinedAt.AddHours(1)),
+                    FamilyMember(sharedFamilyId, otherMemberId, "Member", deletedFamilyUserId, joinedAt.AddHours(2))
+                ]
+            },
+            new FamilyEntity
+            {
+                Id = emptyFamilyId, Name = "Only deleted user", CreatedAt = joinedAt,
+                Members =
+                [
+                    FamilyMember(emptyFamilyId, deletedFamilyUserId, "Head", deletedFamilyUserId, joinedAt)
+                ]
+            });
+        await family.SaveChangesAsync();
+
+        var deletionTime = DateTimeOffset.UtcNow;
+        Assert.True(await FamilyUserDeletion.ApplyAsync(
+            family, deletedFamilyUserId, deletionTime, CancellationToken.None));
+        Assert.False(await FamilyUserDeletion.ApplyAsync(
+            family, deletedFamilyUserId, deletionTime, CancellationToken.None));
+        family.ChangeTracker.Clear();
+        Assert.False(await family.Users.AnyAsync(user => user.Id == deletedFamilyUserId));
+        Assert.False(await family.Families.AnyAsync(item => item.Id == emptyFamilyId));
+        Assert.Equal("Head", (await family.FamilyMembers.SingleAsync(
+            member => member.FamilyId == sharedFamilyId && member.UserId == successorId)).Role);
+        Assert.All(await family.FamilyMembers.Where(member => member.FamilyId == sharedFamilyId).ToListAsync(),
+            member => Assert.Equal(Guid.Empty, member.AddedById));
+        Assert.Equal(deletionTime, (await family.DeletedUsers.SingleAsync(
+            deleted => deleted.UserId == deletedFamilyUserId)).DeletedAt);
+
+        var lateRegistration = await UserProjectionRegistration.ApplyAsync(
+            family,
+            new UserRegisteredEvent(Guid.NewGuid(), deletedFamilyUserId,
+                "resurrected", "resurrected@example.test", deletionTime.AddMinutes(-1)),
+            CancellationToken.None);
+        Assert.Equal(ProjectionRegistrationResult.Deleted, lateRegistration);
+        Assert.False(await family.Users.AnyAsync(user => user.Id == deletedFamilyUserId));
 
         await using var room = new RoomDbContext(Options<RoomDbContext>("room_test"));
         await room.Database.MigrateAsync();
@@ -231,4 +298,24 @@ public sealed class PostgresMigrationTests(PostgresFixture fixture) : IClassFixt
         where TContext : DbContext => new DbContextOptionsBuilder<TContext>()
             .UseNpgsql(fixture.ConnectionString(database))
             .Options;
+
+    private static UserProjection FamilyUser(Guid id, string publicId, string username) => new()
+    {
+        Id = id,
+        PublicId = publicId,
+        Username = username,
+        Email = $"{username}@example.test",
+        CreatedAt = DateTimeOffset.UtcNow.AddDays(-2)
+    };
+
+    private static FamilyMember FamilyMember(
+        Guid familyId, Guid userId, string role, Guid addedById, DateTimeOffset joinedAt) => new()
+    {
+        Id = Guid.NewGuid(),
+        FamilyId = familyId,
+        UserId = userId,
+        Role = role,
+        AddedById = addedById,
+        JoinedAt = joinedAt
+    };
 }

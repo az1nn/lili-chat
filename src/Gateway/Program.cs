@@ -58,6 +58,7 @@ static (string Policy, int PermitLimit, int QueueLimit) RateLimitPolicy(PathStri
     var value = path.Value ?? "";
     if (value is "/api/v1/auth/login" or "/api/v1/auth/register") return ("auth", 10, 0);
     if (value == "/api/v1/auth/refresh") return ("refresh", 30, 0);
+    if (value == "/api/v1/auth/account") return ("account-delete", 5, 0);
     if (value.StartsWith("/api/v1/users/by-public-id/", StringComparison.OrdinalIgnoreCase))
         return ("public-id", 60, 0);
     if (value.StartsWith("/api/v1/messages/room/", StringComparison.OrdinalIgnoreCase))

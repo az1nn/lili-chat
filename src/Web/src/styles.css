@@ -41,6 +41,7 @@ button:disabled { opacity: .5; cursor: default; }
 .profile-sync-error { display: grid; gap: 6px; margin-top: 5px; }
 .profile-sync-error button { justify-self: start; }
 .new-room { display: grid; grid-template-columns: 1fr 44px; gap: 7px; }
+.account-delete { display: grid; gap: 7px; margin-top: 8px; }
 .sidebar nav { display: grid; gap: 7px; overflow-y: auto; }
 .room-button { text-align: left; background: transparent; border: 1px solid transparent; display: grid; gap: 4px; }
 .room-button small { color: #7f89aa; font-weight: 500; }

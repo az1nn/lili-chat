@@ -29,6 +29,7 @@ builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<MessageNotificationConsumer>();
     x.AddConsumer<UserRegisteredNotificationConsumer>();
+    x.AddConsumer<UserDeletedNotificationConsumer>();
     x.UsingRabbitMq((ctx, cfg) =>
     {
         cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "rabbitmq", "/", h =>
@@ -88,6 +89,7 @@ class NotificationContact
     public Guid UserId { get; set; }
     public string Email { get; set; } = "";
     public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
 }
 
 class NotificationDbContext(DbContextOptions<NotificationDbContext> options) : DbContext(options)
@@ -188,8 +190,19 @@ class MessageNotificationConsumer(
         Exception? failure = null;
         audit.Status = NotificationStatuses.Sending;
         await db.SaveChangesAsync(context.CancellationToken);
-        foreach (var delivery in audit.Deliveries.Where(x => x.Status != NotificationStatuses.Delivered))
+        foreach (var delivery in audit.Deliveries.Where(x => !NotificationPrivacy.IsTerminal(x)))
         {
+            await db.Entry(delivery).ReloadAsync(context.CancellationToken);
+            if (NotificationPrivacy.IsTerminal(delivery)) continue;
+            var activeContact = await db.Contacts.AsNoTracking().AnyAsync(
+                contact => contact.UserId == delivery.UserId && contact.DeletedAt == null,
+                context.CancellationToken);
+            if (!activeContact)
+            {
+                NotificationPrivacy.EraseRecipient(delivery);
+                await db.SaveChangesAsync(context.CancellationToken);
+                continue;
+            }
             delivery.Attempts++;
             delivery.LastAttemptAt = DateTimeOffset.UtcNow;
             try
@@ -215,10 +228,13 @@ class MessageNotificationConsumer(
             await db.SaveChangesAsync(context.CancellationToken);
         }
 
-        audit.Status = audit.Deliveries.All(x => x.Status == NotificationStatuses.Delivered)
-            ? NotificationStatuses.Delivered
+        var completed = audit.Deliveries.All(NotificationPrivacy.IsTerminal);
+        audit.Status = completed
+            ? audit.Deliveries.Any(x => x.Status == NotificationStatuses.Delivered)
+                ? NotificationStatuses.Delivered
+                : NotificationStatuses.NoRecipients
             : NotificationStatuses.Failed;
-        audit.CompletedAt = audit.Status == NotificationStatuses.Delivered
+        audit.CompletedAt = completed
             ? DateTimeOffset.UtcNow
             : null;
         await db.SaveChangesAsync(context.CancellationToken);
@@ -287,8 +303,7 @@ class MessageNotificationConsumer(
         var contacts = await db.Contacts.AsNoTracking()
             .Where(contact => targetIds.Contains(contact.UserId))
             .ToListAsync(ct);
-        var recipients = contacts.Select(contact =>
-            new NotificationRecipient(contact.UserId, contact.Email)).ToList();
+        var recipients = NotificationContactProjection.ActiveRecipients(contacts);
 
         var missingIds = targetIds.Except(contacts.Select(contact => contact.UserId)).ToArray();
         if (missingIds.Length > 0)
@@ -332,6 +347,40 @@ class UserRegisteredNotificationConsumer(NotificationDbContext db) : IConsumer<U
     {
         var message = context.Message;
         var contact = await db.Contacts.FindAsync([message.UserId], context.CancellationToken);
+        NotificationContactProjection.ApplyRegistration(db, contact, message);
+        await db.SaveChangesAsync(context.CancellationToken);
+    }
+}
+
+class UserDeletedNotificationConsumer(NotificationDbContext db) : IConsumer<UserDeletedEvent>
+{
+    public async Task Consume(ConsumeContext<UserDeletedEvent> context)
+    {
+        var message = context.Message;
+        var contact = await db.Contacts.FindAsync([message.UserId], context.CancellationToken);
+        NotificationContactProjection.ApplyDeletion(db, contact, message);
+
+        var deliveries = await db.Deliveries
+            .Where(delivery => delivery.UserId == message.UserId && delivery.Recipient != "")
+            .ToListAsync(context.CancellationToken);
+        foreach (var delivery in deliveries)
+            NotificationPrivacy.EraseRecipient(delivery);
+
+        await db.SaveChangesAsync(context.CancellationToken);
+    }
+}
+
+static class NotificationContactProjection
+{
+    public static IReadOnlyList<NotificationRecipient> ActiveRecipients(
+        IEnumerable<NotificationContact> contacts) => contacts
+        .Where(contact => contact.DeletedAt == null)
+        .Select(contact => new NotificationRecipient(contact.UserId, contact.Email))
+        .ToArray();
+
+    public static void ApplyRegistration(
+        NotificationDbContext db, NotificationContact? contact, UserRegisteredEvent message)
+    {
         if (contact is null)
         {
             db.Contacts.Add(new NotificationContact
@@ -340,12 +389,48 @@ class UserRegisteredNotificationConsumer(NotificationDbContext db) : IConsumer<U
                 Email = message.Email.Trim(),
                 UpdatedAt = message.OccurredAt
             });
+            return;
         }
-        else if (contact.UpdatedAt <= message.OccurredAt)
-        {
-            contact.Email = message.Email.Trim();
-            contact.UpdatedAt = message.OccurredAt;
-        }
-        await db.SaveChangesAsync(context.CancellationToken);
+
+        if (contact.DeletedAt is not null || contact.UpdatedAt > message.OccurredAt) return;
+        contact.Email = message.Email.Trim();
+        contact.UpdatedAt = message.OccurredAt;
     }
+
+    public static void ApplyDeletion(
+        NotificationDbContext db, NotificationContact? contact, UserDeletedEvent message)
+    {
+        if (contact is null)
+        {
+            db.Contacts.Add(new NotificationContact
+            {
+                UserId = message.UserId,
+                Email = "",
+                UpdatedAt = message.OccurredAt,
+                DeletedAt = message.OccurredAt
+            });
+            return;
+        }
+
+        contact.Email = "";
+        contact.DeletedAt ??= message.OccurredAt;
+        if (contact.UpdatedAt < message.OccurredAt)
+            contact.UpdatedAt = message.OccurredAt;
+    }
+}
+
+static class NotificationPrivacy
+{
+    public static void EraseRecipient(NotificationDelivery delivery)
+    {
+        delivery.Recipient = "";
+        delivery.LastError = null;
+        if (delivery.Status != NotificationStatuses.Delivered)
+        {
+            delivery.Status = NotificationStatuses.RecipientDeleted;
+        }
+    }
+
+    public static bool IsTerminal(NotificationDelivery delivery) =>
+        delivery.Status is NotificationStatuses.Delivered or NotificationStatuses.RecipientDeleted;
 }

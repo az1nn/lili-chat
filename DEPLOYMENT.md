@@ -12,6 +12,7 @@ The repository now provides an executable MVP with:
 - room roles, member removal, persistent cursor-based history, optimistic message reconciliation, SignalR reconnect/access revocation, and visible `PublicId` projection polling;
 - authenticated internal gRPC, RSA JWT support, endpoint-specific rate limits, request limits, CSP/security headers, and configurable production CORS origins;
 - SMTP notifications with per-recipient delivery state, bounded retries, privacy-safe previews, metrics, and alerts;
+- password-confirmed account deletion propagated through an outbox event, with local tombstones preventing delayed events from restoring personal data; rooms are revoked, authored message content is erased, and notification addresses are removed while idempotency ledgers remain;
 - unit, contract, Testcontainers integration, Playwright E2E, k6, migration, Compose, Prometheus, and backup gates in CI.
 
 ## Local setup: WSL2 and Docker Desktop
@@ -49,6 +50,8 @@ Microsoft documents WSL installation with `wsl --install`; Docker documents enab
    cd src/Web && npm ci && npm run test:e2e && cd ../..
    docker compose --profile test run --rm k6
    ```
+
+   The CI-only outage suite (`npm run test:resilience`) deliberately stops and restarts RabbitMQ, Redis, Realtime Hub, and Room Service. Run it only against an isolated disposable Compose stack.
 
 To inspect email locally, set the following values in `.env`, start with `COMPOSE_PROFILES=notification-test docker compose up --detach --build --wait`, and open `http://localhost:8025`:
 
@@ -145,3 +148,5 @@ docker compose config --quiet
 ```
 
 Then verify both custom domains, registration and refresh after reopening the browser, two-user SignalR delivery, persistence after reload, member revocation, SMTP delivery, metrics, and a backup restored into isolated databases. A Vercel deployment alone is not a functioning application; the complete Render backend and its stateful dependencies must already be healthy.
+
+Also delete a disposable test account from the sidebar and verify that it cannot log in again, its room access is revoked, and its authored message disappears after history reload. Account erasure is eventually consistent across services; monitor RabbitMQ queues and the per-service tombstones before treating the workflow as complete.

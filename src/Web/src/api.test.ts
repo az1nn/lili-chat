@@ -37,4 +37,23 @@ describe('API authentication retry', () => {
     expect(fetchMock).toHaveBeenCalledTimes(4)
     expect(onUnauthorized).not.toHaveBeenCalled()
   })
+
+  it('refreshes an expired token before retrying account deletion', async () => {
+    let token = 'expired-token'
+    const refreshAccessToken = vi.fn(async () => (token = 'fresh-token'))
+    configureApiAuth({
+      getAccessToken: () => token,
+      refreshAccessToken,
+      onUnauthorized: vi.fn(),
+    })
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) =>
+      new Headers(init?.headers).get('Authorization') === 'Bearer fresh-token'
+        ? new Response(null, { status: 204 })
+        : new Response(null, { status: 401 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(api<void>('/api/v1/auth/account', { method: 'DELETE' })).resolves.toBeUndefined()
+    expect(refreshAccessToken).toHaveBeenCalledOnce()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
 })

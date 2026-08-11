@@ -232,17 +232,19 @@ class ChatHub(
         var now = DateTimeOffset.UtcNow;
         var messageId = Guid.NewGuid();
         RedisKey? idempotencyKey = null;
+        var reservedIdempotencyKey = false;
         if (clientMessageId is not null)
         {
             idempotencyKey = $"familychat:message-client:{UserId}:{clientMessageId}";
             try
             {
-                var reserved = await redisDb.StringSetAsync(
+                reservedIdempotencyKey = await redisDb.StringSetAsync(
                     idempotencyKey.Value, messageId.ToString(), TimeSpan.FromDays(1), When.NotExists);
-                if (!reserved)
+                if (!reservedIdempotencyKey)
                 {
                     var existing = await redisDb.StringGetAsync(idempotencyKey.Value);
-                    return new { success = true, data = new { messageId = existing.ToString(), duplicate = true } };
+                    if (!Guid.TryParse(existing.ToString(), out messageId))
+                        return new { success = false, error = "Não foi possível reconciliar a mensagem." };
                 }
             }
             catch (RedisException ex)
@@ -262,7 +264,7 @@ class ChatHub(
         }
         catch
         {
-            if (idempotencyKey is not null)
+            if (idempotencyKey is not null && reservedIdempotencyKey)
             {
                 try { await redisDb.KeyDeleteAsync(idempotencyKey.Value); }
                 catch (RedisException ex) { RecordRedisFailure("send_rollback", ex); }

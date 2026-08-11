@@ -23,13 +23,17 @@ test('two users exchange, persist, synchronize roles, and revoke room access', a
   const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`
   const roomName = `Sala E2E ${suffix}`
   const archivedRoomName = `Sala Arquivada ${suffix}`
+  const deletionRoomName = `Sala Exclusão ${suffix}`
   const message = `Mensagem persistida ${suffix}`
+  const deletedMessage = `Mensagem a apagar ${suffix}`
+  const password = 'StrongPassword!123'
+  const emailB = `bob-${suffix}@example.test`
   const contextA = await browser.newContext()
   const contextB = await browser.newContext()
 
   try {
     const pageA = await register(contextA, `alice-${suffix}`, `alice-${suffix}@example.test`)
-    const pageB = await register(contextB, `bob-${suffix}`, `bob-${suffix}@example.test`)
+    const pageB = await register(contextB, `bob-${suffix}`, emailB)
     const publicIdB = (await pageB.locator('.profile code').textContent())?.trim()
     expect(publicIdB).toBeTruthy()
 
@@ -95,6 +99,40 @@ test('two users exchange, persist, synchronize roles, and revoke room access', a
     await expect(pageB.getByRole('button', { name: new RegExp(archivedRoomName) }))
       .toHaveCount(0, { timeout: 30_000 })
     await expect(pageB.locator('.welcome')).toContainText('Selecione ou crie uma sala')
+
+    await pageA.getByPlaceholder('Nova sala').fill(deletionRoomName)
+    await pageA.locator('.new-room button').click()
+    await pageA.getByPlaceholder('PublicId do familiar').fill(publicIdB!)
+    await pageA.locator('.invite button').click()
+    await expect(pageA.locator('.member-strip')).toContainText(`bob-${suffix}`)
+
+    await pageB.reload()
+    await openRoom(pageB, deletionRoomName)
+    await pageB.getByPlaceholder('Digite uma mensagem...').fill(deletedMessage)
+    await pageB.locator('.composer button').click()
+    await expect(pageB.locator('.message.mine').filter({ hasText: deletedMessage }))
+      .toContainText('persisted', { timeout: 30_000 })
+
+    await pageB.getByText('Excluir conta', { exact: true }).click()
+    await pageB.getByPlaceholder('Senha atual').fill(password)
+    pageB.once('dialog', dialog => dialog.accept())
+    await pageB.getByRole('button', { name: 'Excluir', exact: true }).click()
+    await expect(pageB.getByRole('button', { name: 'Entrar', exact: true }))
+      .toBeVisible({ timeout: 30_000 })
+
+    await expect(pageA.locator('.member-strip')).not.toContainText(`bob-${suffix}`, {
+      timeout: 30_000,
+    })
+    await expect.poll(async () => {
+      await pageA.reload()
+      await openRoom(pageA, deletionRoomName)
+      return (await pageA.locator('.messages').textContent())?.includes(deletedMessage) ?? false
+    }, { timeout: 30_000 }).toBe(false)
+
+    await pageB.getByPlaceholder('Email').fill(emailB)
+    await pageB.getByPlaceholder('Senha').fill(password)
+    await pageB.getByRole('button', { name: 'Entrar', exact: true }).click()
+    await expect(pageB.locator('.error')).toBeVisible()
   } finally {
     await contextA.close()
     await contextB.close()
