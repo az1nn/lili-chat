@@ -9,6 +9,7 @@ test-results/
 .DS_Store
 *.user
 *.suo
+*.tsbuildinfo
 *.pem
 .env
 .env.*
