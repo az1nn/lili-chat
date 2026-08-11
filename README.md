@@ -9,7 +9,7 @@ Chat familiar distribuído baseado em React + .NET 8, com autenticação JWT, sa
 - **Room Service**: salas, membros, papéis Admin/Member/Muted; adição por `PublicId`; gRPC para autorização de acesso à sala.
 - **Realtime Hub**: SignalR autenticado, presença via Redis, validação de membro via gRPC, publicação de `MessageCreatedEvent`, confirmação de persistência, sincronização de roles e expulsão imediata de membros removidos.
 - **Message Service**: consumidor idempotente do evento, histórico REST e retenção configurável em lotes.
-- **Notification Service**: consumidor do evento e registro de auditoria de notificação (o provedor real de push/email fica como extensão).
+- **Notification Service**: consumidor idempotente, resolução de destinatários pelos contratos internos, ledger de entrega por usuário e email SMTP opcional com retries.
 - **Gateway**: YARP com CORS, rate limit e proxy de HTTP/WebSocket.
 - **Web**: React + TypeScript + Vite com registro/login, criação/listagem de salas, chat, convite por `PublicId`, sincronização eventual visível do perfil, controles coerentes com Admin/Member/Muted e histórico incremental por cursor ao rolar para cima.
 - **Observabilidade**: OpenTelemetry Collector, Jaeger, Prometheus e Grafana.
@@ -56,6 +56,14 @@ O dashboard provisionado **Family Chat Overview** compara `message_publish`, `me
 O Prometheus carrega alertas versionados em `deploy/prometheus/rules/`: gap persistente entre mensagens publicadas/persistidas, outbox stalled, erros HTTP elevados, falhas Redis/gRPC, pipeline de telemetria indisponível, replay de refresh token e pico de lockouts. A CI valida configuração e PromQL com o `promtool` da mesma versão usada no Compose.
 
 O Message Service retém mensagens por 365 dias por padrão e remove conteúdo expirado em lotes limitados. Ajuste `MESSAGE_RETENTION_DAYS` por ambiente; valores aceitos ficam entre 1 e 3650 dias. Tamanho, máximo de lotes e intervalo também são configuráveis no Compose por `MESSAGE_RETENTION_BATCH_SIZE`, `MESSAGE_RETENTION_MAX_BATCHES` e `MESSAGE_RETENTION_INTERVAL_MINUTES`. Falhas de limpeza geram métrica e alerta, sem impedir leitura ou persistência do chat.
+
+### Notificações por email
+
+Notificações ficam desativadas por padrão. Para SMTP com STARTTLS, configure `NOTIFICATION_PROVIDER=Smtp`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_ENABLE_SSL` e `SMTP_FROM`; usuário e senha são opcionais, mas devem ser informados juntos. Mantenha `NOTIFICATION_INCLUDE_CONTENT=false` para não copiar o texto das mensagens para o email. Credenciais reais devem vir do secret manager, nunca do arquivo versionado.
+
+Para testar sem enviar emails externos, use `COMPOSE_PROFILES=notification-test`, aponte `SMTP_HOST=mailpit`, `SMTP_PORT=1025` e `SMTP_ENABLE_SSL=false`, e abra o Mailpit em `http://localhost:8025`. O profile é exclusivo de desenvolvimento/CI.
+
+O Notification consulta Room e Family Graph por gRPC autenticado, exclui o remetente e cria uma entrega por destinatário. Falhas recebem até cinco retries exponenciais e ficam registradas; entregas concluídas no ledger não são repetidas e o endereço é removido após o envio para reduzir retenção de PII. Como SMTP não oferece idempotência transacional, uma queda exatamente entre o aceite do provedor e o commit pode produzir uma duplicata; `X-FamilyChat-MessageId` permite correlação. Os contadores `notification_delivered` e `notification_failed` alimentam dashboard e alerta.
 
 ### Backup e restore
 
@@ -195,7 +203,7 @@ deploy/
 
 ## Limites deste pacote
 
-- O Notification Service registra o evento, mas não chama FCM/APNs/email.
+- Email SMTP está disponível, mas preferências por usuário e push FCM/APNs ainda não estão implementados.
 - Não há upload de imagens/anexos.
 - Não há E2EE; mensagens são texto persistido no Message Service.
 - Não há Kubernetes/manifests; Docker Compose é o alvo desta entrega.

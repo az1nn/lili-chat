@@ -11,7 +11,7 @@ Checks executed locally and in GitHub Actions through 2026-08-11:
 - `dotnet tool restore`: PASS; repository-pinned `dotnet-ef` 8.0.11 restored
 - `./scripts/check-migrations.sh`: PASS for Identity, Family Graph, Room, Message, and Notification using dedicated design-time factories; CI rejects unversioned model drift
 - `dotnet build FamilyChat.sln --no-restore`: PASS, zero warnings
-- `dotnet test FamilyChat.sln --no-build --no-restore`: PASS locally, 78 contract/authorization/security/input/retry/retention tests; Docker-backed migration test skipped locally by design
+- `dotnet test FamilyChat.sln --no-build --no-restore`: PASS locally, 85 contract/authorization/security/input/retry/retention/notification tests; Docker-backed migration test skipped locally by design
 - NuGet vulnerability audit: no known vulnerable direct or transitive packages across runtime and test projects after upgrading OpenTelemetry to 1.17.0, pinning MessagePack 2.5.302, aligning EF Core/Npgsql EF/dotnet-ef on 8.0.11, and updating xUnit to 2.9.3 with its Visual Studio runner 3.1.5
 - `npm ci`: PASS
 - `npm run typecheck`: PASS
@@ -27,6 +27,8 @@ Checks executed locally and in GitHub Actions through 2026-08-11:
 - Grafana dashboard JSON parse: PASS; message consistency, authentication-security, SignalR connection, and realtime dependency panels are provisioned
 - Prometheus rules are mounted by Compose; CI validates configuration and PromQL with `promtool` 2.54.1
 - Internal gRPC calls use three-second deadlines and controlled unavailable responses
+- Notification tests exercise recipient filtering, privacy-safe content defaults, configuration validation, bounded failure records, and SMTP delivery against a real local protocol endpoint
+- Distributed E2E enables the isolated `notification-test` profile, captures delivery in Mailpit, and rejects any notification that leaks the chat message while previews are disabled
 
 Distributed runtime evidence:
 

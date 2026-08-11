@@ -183,6 +183,7 @@ public sealed class PostgresMigrationTests(PostgresFixture fixture) : IClassFixt
         await notification.Database.MigrateAsync();
         Assert.Empty(await notification.Database.GetPendingMigrationsAsync());
         Assert.Equal(0, await notification.Audits.CountAsync());
+        Assert.Equal(0, await notification.Deliveries.CountAsync());
 
         await using var firstConnection = new NpgsqlConnection(fixture.ConnectionString("identity_test"));
         await using var secondConnection = new NpgsqlConnection(fixture.ConnectionString("identity_test"));

@@ -38,6 +38,15 @@ groups:
           summary: Message retention cleanup failed
           description: The Message Service could not enforce the configured data-retention policy.
 
+      - alert: NotificationDeliveryFailures
+        expr: increase({__name__=~"notification_failed.*_total"}[15m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Notification delivery is repeatedly failing
+          description: More than five SMTP delivery attempts failed within fifteen minutes.
+
   - name: family-chat-availability
     rules:
       - alert: TelemetryPipelineDown

@@ -106,6 +106,13 @@ services:
       timeout: 3s
       retries: 20
 
+  mailpit:
+    image: axllent/mailpit:v1.30.7
+    profiles: [notification-test]
+    ports:
+      - "8025:8025"
+    networks: [backend]
+
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     environment:
@@ -226,9 +233,23 @@ services:
     environment:
       <<: *service-env
       ConnectionStrings__Default: Host=postgres-notification;Database=notification;Username=app;Password=${DB_PASS}
+      InternalAuth__RoomToken: ${INTERNAL_ROOM_TOKEN}
+      InternalAuth__FamilyToken: ${INTERNAL_FAMILY_TOKEN}
+      Services__Room: http://room-svc:8081
+      Services__FamilyGraph: http://family-svc:8081
+      Notifications__Provider: ${NOTIFICATION_PROVIDER:-Disabled}
+      Notifications__IncludeContent: ${NOTIFICATION_INCLUDE_CONTENT:-false}
+      Notifications__Smtp__Host: ${SMTP_HOST:-}
+      Notifications__Smtp__Port: ${SMTP_PORT:-587}
+      Notifications__Smtp__EnableSsl: ${SMTP_ENABLE_SSL:-true}
+      Notifications__Smtp__From: ${SMTP_FROM:-}
+      Notifications__Smtp__Username: ${SMTP_USERNAME:-}
+      Notifications__Smtp__Password: ${SMTP_PASSWORD:-}
     depends_on:
       postgres-notification: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
+      room-svc: { condition: service_healthy }
+      family-svc: { condition: service_healthy }
     healthcheck: *dotnet-health
     networks: [backend, data]
 

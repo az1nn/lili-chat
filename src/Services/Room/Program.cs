@@ -652,4 +652,25 @@ class RoomGrpcService(RoomDbContext db) : RoomGrpc.RoomGrpcBase
 
         return new RoomSummary { Id = room.Id.ToString(), Name = room.Name, MembersCount = room.Count };
     }
+
+    public override async Task<RoomNotificationTargets> GetRoomNotificationTargets(
+        GetRoomNotificationTargetsRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.RoomId, out var roomId))
+            return new RoomNotificationTargets { Found = false };
+
+        var room = await db.Rooms.AsNoTracking()
+            .Where(r => r.Id == roomId && r.ArchivedAt == null)
+            .Select(r => new
+            {
+                r.Name,
+                UserIds = r.Members.Select(member => member.UserId).ToArray()
+            })
+            .FirstOrDefaultAsync(context.CancellationToken);
+        if (room is null) return new RoomNotificationTargets { Found = false };
+
+        var response = new RoomNotificationTargets { Found = true, RoomName = room.Name };
+        response.UserIds.AddRange(room.UserIds.Select(id => id.ToString()));
+        return response;
+    }
 }

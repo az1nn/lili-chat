@@ -5,6 +5,7 @@ package room;
 service RoomGrpc {
   rpc IsMemberOfRoom (IsMemberRequest) returns (IsMemberResponse);
   rpc GetRoomSummary (GetRoomSummaryRequest) returns (RoomSummary);
+  rpc GetRoomNotificationTargets (GetRoomNotificationTargetsRequest) returns (RoomNotificationTargets);
 }
 
 message IsMemberRequest {
@@ -24,4 +25,12 @@ message RoomSummary {
   string id = 1;
   string name = 2;
   int32 members_count = 3;
+}
+
+message GetRoomNotificationTargetsRequest { string room_id = 1; }
+
+message RoomNotificationTargets {
+  bool found = 1;
+  string room_name = 2;
+  repeated string user_ids = 3;
 }

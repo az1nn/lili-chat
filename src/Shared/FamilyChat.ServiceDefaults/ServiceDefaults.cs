@@ -123,6 +123,10 @@ public static class FamilyChatMetrics
         Meter.CreateCounter<long>("redis_failures", unit: "failures");
     public static readonly Counter<long> GrpcFailures =
         Meter.CreateCounter<long>("grpc_failures", unit: "failures");
+    public static readonly Counter<long> NotificationDelivered =
+        Meter.CreateCounter<long>("notification_delivered", unit: "deliveries");
+    public static readonly Counter<long> NotificationFailed =
+        Meter.CreateCounter<long>("notification_failed", unit: "attempts");
 }
 
 public static class OutboxRetry

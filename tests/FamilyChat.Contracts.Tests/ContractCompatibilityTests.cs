@@ -30,6 +30,15 @@ public class ContractCompatibilityTests
             ("id", 1), ("name", 2), ("members_count", 3));
     }
 
+    [Fact]
+    public void RoomNotificationTargets_UsesAdditiveStableFieldNumbers()
+    {
+        AssertFields(GetRoomNotificationTargetsRequest.Descriptor, ("room_id", 1));
+        AssertFields(RoomNotificationTargets.Descriptor,
+            ("found", 1), ("room_name", 2), ("user_ids", 3));
+        Assert.NotNull(RoomGrpc.Descriptor.FindMethodByName("GetRoomNotificationTargets"));
+    }
+
     [Theory]
     [MemberData(nameof(Events))]
     public void SharedEvent_RoundTripsWithSystemTextJson(object integrationEvent)

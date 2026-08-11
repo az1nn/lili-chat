@@ -24,6 +24,8 @@ grep -q '_restore_\[a-z0-9_\]' scripts/restore-databases.sh
 test -f tests/Identity.API.Tests/IdentityInputTests.cs
 test -f tests/FamilyGraph.API.Tests/FamilyInputTests.cs
 test -f tests/Message.API.Tests/MessageRetentionPolicyTests.cs
+test -f tests/Notification.API.Tests/NotificationDeliveryTests.cs
+test -f scripts/check-notification-delivery.mjs
 test -f deploy/grafana/provisioning/dashboards/family-chat.json
 test -f deploy/prometheus/rules/family-chat.yml
 grep -q '^rule_files:' deploy/prometheus/prometheus.yml

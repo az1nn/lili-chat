@@ -87,6 +87,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: validate
     timeout-minutes: 30
+    env:
+      COMPOSE_PROFILES: notification-test
+      NOTIFICATION_PROVIDER: Smtp
+      NOTIFICATION_INCLUDE_CONTENT: "false"
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_ENABLE_SSL: "false"
+      SMTP_FROM: notifications@familychat.test
     steps:
       - uses: actions/checkout@v4
 
@@ -111,6 +119,9 @@ jobs:
       - name: Run two-user browser flow
         working-directory: src/Web
         run: npm run test:e2e
+
+      - name: Verify SMTP notification delivery
+        run: node scripts/check-notification-delivery.mjs
 
       - name: Run k6 smoke test
         run: docker compose --profile test run --rm k6

@@ -89,6 +89,18 @@
         { "refId": "B", "legendFormat": "grpc {{operation}} {{status}}", "expr": "sum by (operation, status) (rate({__name__=~\"grpc_failures.*\"}[5m]))" }
       ],
       "gridPos": { "h": 9, "w": 16, "x": 8, "y": 36 }
+    },
+    {
+      "id": 8,
+      "title": "Notification delivery",
+      "description": "SMTP deliveries and failed attempts; repeated failures trigger an alert.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        { "refId": "A", "legendFormat": "delivered/s", "expr": "sum(rate({__name__=~\"notification_delivered.*\"}[5m]))" },
+        { "refId": "B", "legendFormat": "failed attempts/s", "expr": "sum(rate({__name__=~\"notification_failed.*\"}[5m]))" }
+      ],
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 45 }
     }
   ],
   "refresh": "10s",
