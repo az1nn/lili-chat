@@ -101,6 +101,18 @@
         { "refId": "B", "legendFormat": "failed attempts/s", "expr": "sum(rate({__name__=~\"notification_failed.*\"}[5m]))" }
       ],
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 45 }
+    },
+    {
+      "id": 9,
+      "title": "RabbitMQ queue health",
+      "description": "Ready messages reveal backlog; a non-empty queue with zero consumers triggers a critical alert.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        { "refId": "A", "legendFormat": "{{queue}} ready", "expr": "sum by (queue) (rabbitmq_queue_messages_ready)" },
+        { "refId": "B", "legendFormat": "{{queue}} consumers", "expr": "sum by (queue) (rabbitmq_queue_consumers)" }
+      ],
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 54 }
     }
   ],
   "refresh": "10s",

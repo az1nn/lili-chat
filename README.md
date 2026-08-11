@@ -53,7 +53,7 @@ Acesse:
 
 Credenciais RabbitMQ de desenvolvimento vêm do `.env`. Troque todos os segredos antes de qualquer deploy real.
 
-O dashboard provisionado **Family Chat Overview** compara `message_publish`, `message_persisted` e falhas. Uma diferença crescente entre publicação e persistência indica lag ou falha no consumidor. O mesmo dashboard acompanha falhas de login, lockouts, reutilização de refresh token, conexões SignalR ativas e falhas Redis/gRPC do realtime.
+O dashboard provisionado **Family Chat Overview** compara `message_publish`, `message_persisted` e falhas. Uma diferença crescente entre publicação e persistência indica lag ou falha no consumidor. O mesmo dashboard acompanha filas/consumidores RabbitMQ, falhas de login, lockouts, reutilização de refresh token, conexões SignalR ativas e falhas Redis/gRPC do realtime.
 
 O Prometheus carrega alertas versionados em `deploy/prometheus/rules/`: gap persistente entre mensagens publicadas/persistidas, outbox stalled, erros HTTP elevados, falhas Redis/gRPC, pipeline de telemetria indisponível, replay de refresh token e pico de lockouts. A CI valida configuração e PromQL com o `promtool` da mesma versão usada no Compose.
 

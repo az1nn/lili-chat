@@ -30,6 +30,9 @@ test -f tests/Gateway.Tests/CorsOriginsTests.cs
 test -f scripts/check-notification-delivery.mjs
 test -f deploy/grafana/provisioning/dashboards/family-chat.json
 test -f deploy/prometheus/rules/family-chat.yml
+test -f deploy/rabbitmq/enabled_plugins
+grep -q 'rabbitmq_prometheus' deploy/rabbitmq/enabled_plugins
+grep -q 'rabbitmq:15692' deploy/prometheus/prometheus.yml
 grep -q '^rule_files:' deploy/prometheus/prometheus.yml
 for svc in Identity FamilyGraph Room Message RealtimeHub Notification; do
   test -f "src/Services/$svc/Dockerfile"

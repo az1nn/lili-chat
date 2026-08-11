@@ -47,6 +47,27 @@ groups:
           summary: Notification delivery is repeatedly failing
           description: More than five SMTP delivery attempts failed within fifteen minutes.
 
+      - alert: RabbitQueueBacklog
+        expr: sum by (queue, vhost) (rabbitmq_queue_messages_ready) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: RabbitMQ queue backlog is growing
+          description: "Queue {{ $labels.queue }} has more than 100 ready messages for five minutes."
+
+      - alert: RabbitQueueWithoutConsumers
+        expr: >-
+          sum by (queue, vhost) (rabbitmq_queue_messages_ready) > 0
+          and on (queue, vhost)
+          sum by (queue, vhost) (rabbitmq_queue_consumers) == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: RabbitMQ queue has no consumers
+          description: "Queue {{ $labels.queue }} contains messages but has no active consumer."
+
   - name: family-chat-availability
     rules:
       - alert: TelemetryPipelineDown
@@ -57,6 +78,15 @@ groups:
         annotations:
           summary: OpenTelemetry metrics pipeline is unavailable
           description: Prometheus has not scraped the collector successfully for two minutes.
+
+      - alert: RabbitMetricsDown
+        expr: up{job="rabbitmq"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: RabbitMQ metrics endpoint is unavailable
+          description: Prometheus has not scraped RabbitMQ successfully for two minutes.
 
       - alert: ElevatedHttpServerErrors
         expr: >-

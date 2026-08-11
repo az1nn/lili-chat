@@ -111,7 +111,7 @@ For repository-backed services, set Render's root directory to `src` so each Doc
 | `realtime-hub` | Private | `Services/RealtimeHub/Dockerfile` | RabbitMQ, Redis, Room gRPC |
 | `notification-svc` | Private | `Services/Notification/Dockerfile` | Notification DB, RabbitMQ, Room gRPC, SMTP |
 
-Deploy RabbitMQ from its official container image as a private service, persist `/var/lib/rabbitmq`, and do not publish ports `5672` or `15672`. Set every HTTP health check to `/health`. Identity, Message, Realtime, Notification, and Gateway use HTTP port `8080`; Family Graph and Room additionally bind private gRPC port `8081`.
+Deploy RabbitMQ from its official container image as a private service, persist `/var/lib/rabbitmq`, enable `rabbitmq_prometheus`, and do not publish ports `5672`, `15672`, or metrics port `15692` publicly. Allow Prometheus to scrape `15692` only over the private network. Set every HTTP health check to `/health`. Identity, Message, Realtime, Notification, and Gateway use HTTP port `8080`; Family Graph and Room additionally bind private gRPC port `8081`.
 
 Preserve five independent databases. They may share a managed PostgreSQL server only if it provides five separate logical databases and credentials; never point two bounded contexts at the same schema.
 
