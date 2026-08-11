@@ -295,14 +295,15 @@ class MessageNotificationConsumer(
 
         audit.Status = NotificationStatuses.CreatingDeliveries;
         await db.SaveChangesAsync(ct);
-        foreach (var recipient in NotificationRecipients.Valid(recipients, e.SenderId))
-        {
-            audit.Deliveries.Add(new NotificationDelivery
+        var deliveries = NotificationRecipients.Valid(recipients, e.SenderId)
+            .Select(recipient => new NotificationDelivery
             {
                 Id = Guid.NewGuid(), AuditId = audit.Id, UserId = recipient.UserId,
-                Recipient = recipient.Email, Status = NotificationStatuses.Queued
-            });
-        }
+                Recipient = recipient.Email, Status = NotificationStatuses.Queued,
+                Audit = audit
+            })
+            .ToArray();
+        db.Deliveries.AddRange(deliveries);
         await db.SaveChangesAsync(ct);
     }
 }
