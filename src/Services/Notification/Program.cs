@@ -1,5 +1,4 @@
 using FamilyChat.Contracts.Events;
-using FamilyChat.Contracts.Family;
 using FamilyChat.Contracts.Room;
 using FamilyChat.ServiceDefaults;
 using MassTransit;
@@ -12,21 +11,12 @@ builder.AddFamilyChatObservability("notification-svc");
 builder.Services.AddDbContext<NotificationDbContext>(o =>
     o.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 var roomToken = InternalServiceAuth.RequiredToken(builder.Configuration, "InternalAuth:RoomToken");
-var familyToken = InternalServiceAuth.RequiredToken(builder.Configuration, "InternalAuth:FamilyToken");
 builder.Services.AddGrpcClient<RoomGrpc.RoomGrpcClient>(o =>
     o.Address = new Uri(builder.Configuration["Services:Room"] ?? "http://room-svc:8081"))
     .ConfigureChannel(o => o.UnsafeUseInsecureChannelCallCredentials = true)
     .AddCallCredentials((_, metadata) =>
     {
         metadata.Add(InternalServiceAuth.HeaderName, roomToken);
-        return Task.CompletedTask;
-    });
-builder.Services.AddGrpcClient<FamilyGraphGrpc.FamilyGraphGrpcClient>(o =>
-    o.Address = new Uri(builder.Configuration["Services:FamilyGraph"] ?? "http://family-svc:8081"))
-    .ConfigureChannel(o => o.UnsafeUseInsecureChannelCallCredentials = true)
-    .AddCallCredentials((_, metadata) =>
-    {
-        metadata.Add(InternalServiceAuth.HeaderName, familyToken);
         return Task.CompletedTask;
     });
 var notificationOptions = NotificationOptions.Load(builder.Configuration);
@@ -36,6 +26,7 @@ builder.Services.AddSingleton<INotificationSender, SmtpNotificationSender>();
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<MessageNotificationConsumer>();
+    x.AddConsumer<UserRegisteredNotificationConsumer>();
     x.UsingRabbitMq((ctx, cfg) =>
     {
         cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "rabbitmq", "/", h =>
@@ -90,10 +81,18 @@ class NotificationDelivery
     public NotificationAudit Audit { get; set; } = null!;
 }
 
+class NotificationContact
+{
+    public Guid UserId { get; set; }
+    public string Email { get; set; } = "";
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
 class NotificationDbContext(DbContextOptions<NotificationDbContext> options) : DbContext(options)
 {
     public DbSet<NotificationAudit> Audits => Set<NotificationAudit>();
     public DbSet<NotificationDelivery> Deliveries => Set<NotificationDelivery>();
+    public DbSet<NotificationContact> Contacts => Set<NotificationContact>();
     protected override void OnModelCreating(ModelBuilder b)
     {
         b.Entity<NotificationAudit>().ToTable("notification_audit").HasKey(x => x.Id);
@@ -108,13 +107,14 @@ class NotificationDbContext(DbContextOptions<NotificationDbContext> options) : D
         b.Entity<NotificationDelivery>().Property(x => x.LastError).HasMaxLength(500);
         b.Entity<NotificationDelivery>().HasOne(x => x.Audit).WithMany(x => x.Deliveries)
             .HasForeignKey(x => x.AuditId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<NotificationContact>().ToTable("notification_contact").HasKey(x => x.UserId);
+        b.Entity<NotificationContact>().Property(x => x.Email).HasMaxLength(255);
     }
 }
 
 class MessageNotificationConsumer(
     NotificationDbContext db,
     RoomGrpc.RoomGrpcClient roomClient,
-    FamilyGraphGrpc.FamilyGraphGrpcClient familyClient,
     INotificationSender sender,
     NotificationOptions options,
     ILogger<MessageNotificationConsumer> logger) : IConsumer<MessageCreatedEvent>
@@ -250,12 +250,24 @@ class MessageNotificationConsumer(
             targetUserIds = room.UserIds;
         }
 
-        var request = new GetUsersByIdsRequest();
-        request.UserIds.AddRange(targetUserIds);
-        if (request.UserIds.Count == 0) return;
-        var users = await familyClient.GetUsersByIdsAsync(request,
-            deadline: DateTime.UtcNow.AddSeconds(3), cancellationToken: ct);
-        foreach (var recipient in NotificationRecipients.Valid(users.Users, e.SenderId))
+        if (targetUserIds.Count == 0) return;
+        var targetIds = targetUserIds
+            .Select(value => Guid.TryParse(value, out var id) ? id : Guid.Empty)
+            .Where(id => id != Guid.Empty && id != e.SenderId)
+            .Distinct()
+            .ToArray();
+        var contacts = await db.Contacts.AsNoTracking()
+            .Where(contact => targetIds.Contains(contact.UserId))
+            .ToListAsync(ct);
+        var recipients = contacts.Select(contact =>
+            new NotificationRecipient(contact.UserId, contact.Email)).ToList();
+
+        var missingIds = targetIds.Except(contacts.Select(contact => contact.UserId)).ToArray();
+        if (missingIds.Length > 0)
+            throw new InvalidOperationException(
+                $"Notification contacts are not projected for {missingIds.Length} recipient(s).");
+
+        foreach (var recipient in NotificationRecipients.Valid(recipients, e.SenderId))
         {
             audit.Deliveries.Add(new NotificationDelivery
             {
@@ -264,5 +276,29 @@ class MessageNotificationConsumer(
             });
         }
         await db.SaveChangesAsync(ct);
+    }
+}
+
+class UserRegisteredNotificationConsumer(NotificationDbContext db) : IConsumer<UserRegisteredEvent>
+{
+    public async Task Consume(ConsumeContext<UserRegisteredEvent> context)
+    {
+        var message = context.Message;
+        var contact = await db.Contacts.FindAsync([message.UserId], context.CancellationToken);
+        if (contact is null)
+        {
+            db.Contacts.Add(new NotificationContact
+            {
+                UserId = message.UserId,
+                Email = message.Email.Trim(),
+                UpdatedAt = message.OccurredAt
+            });
+        }
+        else if (contact.UpdatedAt <= message.OccurredAt)
+        {
+            contact.Email = message.Email.Trim();
+            contact.UpdatedAt = message.OccurredAt;
+        }
+        await db.SaveChangesAsync(context.CancellationToken);
     }
 }

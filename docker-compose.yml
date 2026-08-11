@@ -235,9 +235,7 @@ services:
       <<: *service-env
       ConnectionStrings__Default: Host=postgres-notification;Database=notification;Username=app;Password=${DB_PASS}
       InternalAuth__RoomToken: ${INTERNAL_ROOM_TOKEN}
-      InternalAuth__FamilyToken: ${INTERNAL_FAMILY_TOKEN}
       Services__Room: http://room-svc:8081
-      Services__FamilyGraph: http://family-svc:8081
       Notifications__Provider: ${NOTIFICATION_PROVIDER:-Disabled}
       Notifications__IncludeContent: ${NOTIFICATION_INCLUDE_CONTENT:-false}
       Notifications__Smtp__Host: ${SMTP_HOST:-}
@@ -250,7 +248,6 @@ services:
       postgres-notification: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       room-svc: { condition: service_healthy }
-      family-svc: { condition: service_healthy }
     healthcheck: *dotnet-health
     networks: [backend, data]
 

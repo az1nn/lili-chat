@@ -99,6 +99,12 @@ static class NotificationRecipients
         .Where(user => MailAddress.TryCreate(user.Email, out _))
         .DistinctBy(user => user.UserId)
         .ToArray();
+
+    public static IReadOnlyList<NotificationRecipient> Valid(
+        IEnumerable<NotificationRecipient> contacts, Guid senderId) => contacts
+        .Where(contact => contact.UserId != senderId && MailAddress.TryCreate(contact.Email, out _))
+        .DistinctBy(contact => contact.UserId)
+        .ToArray();
 }
 
 static class NotificationTargetSnapshot

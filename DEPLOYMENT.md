@@ -109,7 +109,7 @@ For repository-backed services, set Render's root directory to `src` so each Doc
 | `room-svc` | Private | `Services/Room/Dockerfile` | Room DB, RabbitMQ, Family gRPC |
 | `message-svc` | Private | `Services/Message/Dockerfile` | Message DB, RabbitMQ, Room gRPC |
 | `realtime-hub` | Private | `Services/RealtimeHub/Dockerfile` | RabbitMQ, Redis, Room gRPC |
-| `notification-svc` | Private | `Services/Notification/Dockerfile` | Notification DB, RabbitMQ, Room/Family gRPC, SMTP |
+| `notification-svc` | Private | `Services/Notification/Dockerfile` | Notification DB, RabbitMQ, Room gRPC, SMTP |
 
 Deploy RabbitMQ from its official container image as a private service, persist `/var/lib/rabbitmq`, and do not publish ports `5672` or `15672`. Set every HTTP health check to `/health`. Identity, Message, Realtime, Notification, and Gateway use HTTP port `8080`; Family Graph and Room additionally bind private gRPC port `8081`.
 
