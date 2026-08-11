@@ -357,7 +357,7 @@ function Workspace() {
       <button className="ghost logout" onClick={logout}>Sair</button>
       <details>
         <summary>Excluir conta</summary>
-        <form className="new-room" onSubmit={removeAccount}>
+        <form className="account-delete" onSubmit={removeAccount}>
           <input type="password" autoComplete="current-password" placeholder="Senha atual"
             maxLength={128} required value={deletePassword}
             onChange={e => setDeletePassword(e.target.value)} />

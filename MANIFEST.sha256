@@ -99,7 +99,7 @@ ffab6ac3b49f656626181eba20db5bbb63e7bbb9e0a9a33949849ed682da8e9c  ./src/Web/pack
 f3b66882124affa76fe6bc18154d2cab86dcf08b55b6e24706caa067915e00d3  ./src/Web/package.json
 d11b9fa4174a18334d563f93004abbad7785037456746dbcec10785f9d54a479  ./src/Web/playwright.config.ts
 b88ae69d56eff4b26a80c70835e7d66f1202000da6533529d2aaa19f21f8ae06  ./src/Web/src/App.test.tsx
-306bd9480d689cb00bab9ce3ac764b035cb7dc459d50a06634c838bddc80d7b3  ./src/Web/src/App.tsx
+253f2819f0facf4e1afef28cd718cf8163b43a87316cd031406774b46a95fdfc  ./src/Web/src/App.tsx
 7383cb506f1769507d6660ab05bb1e19804d6c9e26941a5803b36f0e570f5de3  ./src/Web/src/AuthContext.tsx
 70488f59372d69a55b8fd6afe44ba1e98dce3d0a2da98cecec42bed7b55a802a  ./src/Web/src/ChatPanel.test.tsx
 bd54bf94c8095d6356f1875071e7e09d85c49cdf53e66ead4367f199710833e1  ./src/Web/src/api.test.ts
@@ -113,7 +113,7 @@ d931784bb3dec9dc901982d183aa7151061b36e8419c76b6993471c26c26a57d  ./src/Web/src/
 d87d04d501b78b0cca5dede7352706a6f32b1e1563ea19a9903ba059fb246091  ./src/Web/src/profileProjection.ts
 b692ccd34b4a51665db304f5efbda9038396de740e9207c4881f889dbce70acc  ./src/Web/src/roomPermissions.test.ts
 00aadb8bb8449e7d1661552b75e0e3c51629271328fa8d3d84a7d8ffa1c46c5f  ./src/Web/src/roomPermissions.ts
-ae917aa32c6e22678a55a595d0e206945e681797c50b29d36c6da565e0a4ab51  ./src/Web/src/styles.css
+68cf86d9fc75002ebfc7cc8a0833896b7bd3d6906031b55635860e276552f0b2  ./src/Web/src/styles.css
 4c7461e4d5a6d9533c4952a076cf0991a83c9f7271008bba1c980158064812b5  ./src/Web/src/test/setup.ts
 32db39853f4229e4f54240cc0326e40104a3865dc0ebde7c0a8d5b1cf4077a69  ./src/Web/src/types.ts
 28fcfb41674a7d47a48b5b731d4293217bf49e7e157d6540a746f97ec56dad55  ./src/Web/src/useChat.ts
