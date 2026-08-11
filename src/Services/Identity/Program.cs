@@ -211,12 +211,16 @@ app.MapDelete("/api/v1/auth/account", async (
     IPasswordHasher<AppUser> hasher,
     CancellationToken ct) =>
 {
-    if (!HasCsrfHeader(http.Request) || !TryUserId(http.User, out var userId))
+    if (!HasCsrfHeader(http.Request))
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (!TryUserId(http.User, out var userId))
         return Results.Unauthorized();
 
     var user = await db.Users.SingleOrDefaultAsync(u => u.Id == userId, ct);
-    if (user is null || !AccountDeletion.ConfirmPassword(hasher, user, req.Password))
+    if (user is null)
         return Results.Unauthorized();
+    if (!AccountDeletion.ConfirmPassword(hasher, user, req.Password))
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
 
     await AccountDeletion.DeleteAsync(db, user, ct);
 
