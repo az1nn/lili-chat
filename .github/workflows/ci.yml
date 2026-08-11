@@ -123,9 +123,12 @@ jobs:
       - name: Verify SMTP notification delivery
         run: |
           if ! node scripts/check-notification-delivery.mjs; then
-            docker compose exec -T postgres-notification psql \
+            ledger=$(docker compose exec -T postgres-notification psql \
               --username app --dbname notification \
-              --command 'SELECT a."MessageId", a."Status", d."UserId", d."Status", d."Attempts", d."LastError" FROM notification_audit a LEFT JOIN notification_delivery d ON d."AuditId" = a."Id" ORDER BY a."CreatedAt" DESC;'
+              --tuples-only --no-align --field-separator='|' \
+              --command 'SELECT a."MessageId", a."Status", d."UserId", d."Status", d."Attempts", d."LastError" FROM notification_audit a LEFT JOIN notification_delivery d ON d."AuditId" = a."Id" ORDER BY a."CreatedAt" DESC;')
+            annotation=$(echo "$ledger" | tr '\n' ';' | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')
+            echo "::error title=Notification delivery ledger::$annotation"
             docker compose logs --no-color --tail=200 notification-svc mailpit
             exit 1
           fi
