@@ -66,6 +66,7 @@ public class ContractCompatibilityTests
     public static TheoryData<object> Events => new()
     {
         new UserRegisteredEvent(Guid.NewGuid(), Guid.NewGuid(), "alice", "alice@example.test", DateTimeOffset.UtcNow),
+        new UserDeletedEvent(Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow),
         new RoomCreatedEvent(Guid.NewGuid(), Guid.NewGuid(), "Família", DateTimeOffset.UtcNow),
         new RoomMemberAddedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Member", DateTimeOffset.UtcNow),
         new RoomMemberRemovedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "removed", DateTimeOffset.UtcNow),
@@ -78,6 +79,7 @@ public class ContractCompatibilityTests
     public static TheoryData<object, string[]> EventShapes => new()
     {
         { new UserRegisteredEvent(Guid.NewGuid(), Guid.NewGuid(), "alice", "alice@example.test", DateTimeOffset.UtcNow), ["CorrelationId", "UserId", "Username", "Email", "OccurredAt"] },
+        { new UserDeletedEvent(Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow), ["CorrelationId", "UserId", "OccurredAt"] },
         { new RoomCreatedEvent(Guid.NewGuid(), Guid.NewGuid(), "Família", DateTimeOffset.UtcNow), ["RoomId", "OwnerId", "Name", "OccurredAt"] },
         { new RoomMemberAddedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Member", DateTimeOffset.UtcNow), ["RoomId", "UserId", "AddedById", "Role", "OccurredAt"] },
         { new RoomMemberRemovedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "removed", DateTimeOffset.UtcNow), ["RoomId", "UserId", "RemovedById", "Reason", "OccurredAt"] },

@@ -204,7 +204,33 @@ app.MapPost("/api/v1/auth/logout", async (
     return Results.NoContent();
 });
 
+app.MapDelete("/api/v1/auth/account", async (
+    DeleteAccountRequest req,
+    HttpContext http,
+    IdentityDbContext db,
+    IPasswordHasher<AppUser> hasher,
+    CancellationToken ct) =>
+{
+    if (!HasCsrfHeader(http.Request) || !TryUserId(http.User, out var userId))
+        return Results.Unauthorized();
+
+    var user = await db.Users.SingleOrDefaultAsync(u => u.Id == userId, ct);
+    if (user is null || !AccountDeletion.ConfirmPassword(hasher, user, req.Password))
+        return Results.Unauthorized();
+
+    await AccountDeletion.DeleteAsync(db, user, ct);
+
+    ClearRefreshCookie(http.Response, app.Environment.IsDevelopment());
+    return Results.NoContent();
+}).RequireAuthorization();
+
 await app.RunAsync();
+
+static bool TryUserId(ClaimsPrincipal principal, out Guid id)
+{
+    var raw = principal.FindFirstValue("sub") ?? principal.FindFirstValue(ClaimTypes.NameIdentifier);
+    return Guid.TryParse(raw, out id);
+}
 
 static bool HasCsrfHeader(HttpRequest request) =>
     request.Headers.TryGetValue("X-FamilyChat-CSRF", out var value) && value == "1";
@@ -229,6 +255,32 @@ static CookieOptions RefreshCookieOptions(DateTimeOffset expires, bool isDevelop
 
 record RegisterRequest(string Username, string Email, string Password);
 record LoginRequest(string Email, string Password);
+record DeleteAccountRequest(string Password);
+static class AccountDeletion
+{
+    public static bool ConfirmPassword(
+        IPasswordHasher<AppUser> hasher,
+        AppUser user,
+        string? password)
+    {
+        if (string.IsNullOrEmpty(password) || password.Length > 128) return false;
+        return hasher.VerifyHashedPassword(user, user.PasswordHash, password) !=
+            PasswordVerificationResult.Failed;
+    }
+
+    public static async Task<UserDeletedEvent> DeleteAsync(
+        IdentityDbContext db,
+        AppUser user,
+        CancellationToken ct)
+    {
+        var deleted = new UserDeletedEvent(Guid.NewGuid(), user.Id, DateTimeOffset.UtcNow);
+        db.OutboxMessages.Add(OutboxMessage.Create(
+            deleted.CorrelationId, nameof(UserDeletedEvent), deleted));
+        db.Users.Remove(user);
+        await db.SaveChangesAsync(ct);
+        return deleted;
+    }
+}
 static class IdentityInput
 {
     public static bool TryRegistration(
@@ -455,11 +507,19 @@ class IdentityOutboxPublisher(IServiceScopeFactory scopeFactory, ILogger<Identit
         {
             try
             {
-                if (message.Type != nameof(UserRegisteredEvent))
-                    throw new InvalidOperationException($"Unknown outbox message type: {message.Type}");
-                var payload = JsonSerializer.Deserialize<UserRegisteredEvent>(message.Payload)
-                    ?? throw new InvalidOperationException("Invalid outbox payload");
-                await publish.Publish(payload, ct);
+                var payload = IdentityOutbox.Deserialize(message);
+                switch (payload)
+                {
+                    case UserRegisteredEvent registered:
+                        await publish.Publish(registered, ct);
+                        break;
+                    case UserDeletedEvent deleted:
+                        await publish.Publish(deleted, ct);
+                        break;
+                    default:
+                        throw new InvalidOperationException(
+                            $"Unsupported outbox payload: {payload.GetType().Name}");
+                }
                 message.PublishedAt = DateTimeOffset.UtcNow;
                 message.NextAttemptAt = null;
                 message.LastError = null;
@@ -485,6 +545,20 @@ class IdentityOutboxPublisher(IServiceScopeFactory scopeFactory, ILogger<Identit
             await db.SaveChangesAsync(ct);
         }
     }
+}
+
+static class IdentityOutbox
+{
+    public static object Deserialize(OutboxMessage message) => message.Type switch
+    {
+        nameof(UserRegisteredEvent) => Deserialize<UserRegisteredEvent>(message.Payload),
+        nameof(UserDeletedEvent) => Deserialize<UserDeletedEvent>(message.Payload),
+        _ => throw new InvalidOperationException($"Unknown outbox message type: {message.Type}")
+    };
+
+    static T Deserialize<T>(string payload) =>
+        JsonSerializer.Deserialize<T>(payload)
+        ?? throw new InvalidOperationException("Invalid outbox payload");
 }
 
 record JwtOptions(SecurityKey SigningKey, string Issuer, string Audience, int AccessMinutes, int RefreshDays)

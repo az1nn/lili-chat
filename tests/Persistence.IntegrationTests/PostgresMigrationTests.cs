@@ -135,6 +135,18 @@ public sealed class PostgresMigrationTests(PostgresFixture fixture) : IClassFixt
         Assert.Equal(0, await verificationDb.RefreshTokens.CountAsync(
             token => token.FamilyId == logoutFamilyId && token.RevokedAt == null));
 
+        var deletionEvent = await AccountDeletion.DeleteAsync(
+            verificationDb,
+            await verificationDb.Users.SingleAsync(user => user.Id == userId),
+            CancellationToken.None);
+        verificationDb.ChangeTracker.Clear();
+        Assert.False(await verificationDb.Users.AnyAsync(user => user.Id == userId));
+        var deletionOutbox = await verificationDb.OutboxMessages.SingleAsync(
+            message => message.Id == deletionEvent.CorrelationId);
+        Assert.Equal(nameof(UserDeletedEvent), deletionOutbox.Type);
+        Assert.Equal(deletionEvent, Assert.IsType<UserDeletedEvent>(
+            IdentityOutbox.Deserialize(deletionOutbox)));
+
         await using var family = new FamilyDbContext(Options<FamilyDbContext>("family_test"));
         await family.Database.MigrateAsync();
         Assert.Empty(await family.Database.GetPendingMigrationsAsync());

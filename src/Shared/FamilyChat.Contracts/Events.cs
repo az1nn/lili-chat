@@ -7,6 +7,11 @@ public record UserRegisteredEvent(
     string Email,
     DateTimeOffset OccurredAt);
 
+public record UserDeletedEvent(
+    Guid CorrelationId,
+    Guid UserId,
+    DateTimeOffset OccurredAt);
+
 public record MessageCreatedEvent(
     Guid MessageId,
     Guid RoomId,
