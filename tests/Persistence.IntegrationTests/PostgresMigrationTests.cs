@@ -150,6 +150,34 @@ public sealed class PostgresMigrationTests(PostgresFixture fixture) : IClassFixt
             persisted => persisted.Id == duplicateEvent.MessageId));
         Assert.Equal(1, await messageVerificationDb.OutboxMessages.CountAsync());
 
+        var expiredMessageId = Guid.NewGuid();
+        var retainedMessageId = Guid.NewGuid();
+        messageVerificationDb.Messages.AddRange(
+            new MessageEntity
+            {
+                Id = expiredMessageId,
+                RoomId = Guid.NewGuid(),
+                SenderId = Guid.NewGuid(),
+                Content = "expired",
+                SentAt = DateTimeOffset.UtcNow.AddDays(-366)
+            },
+            new MessageEntity
+            {
+                Id = retainedMessageId,
+                RoomId = Guid.NewGuid(),
+                SenderId = Guid.NewGuid(),
+                Content = "retained",
+                SentAt = DateTimeOffset.UtcNow.AddDays(-364)
+            });
+        await messageVerificationDb.SaveChangesAsync();
+
+        var deleted = await MessageRetention.DeleteBatchAsync(
+            messageVerificationDb, DateTimeOffset.UtcNow.AddDays(-365), 100,
+            CancellationToken.None);
+        Assert.Equal(1, deleted);
+        Assert.False(await messageVerificationDb.Messages.AnyAsync(m => m.Id == expiredMessageId));
+        Assert.True(await messageVerificationDb.Messages.AnyAsync(m => m.Id == retainedMessageId));
+
         await using var notification = new NotificationDbContext(
             Options<NotificationDbContext>("notification_test"));
         await notification.Database.MigrateAsync();

@@ -99,6 +99,10 @@ public static class FamilyChatMetrics
         Meter.CreateCounter<long>("message_persisted", unit: "messages");
     public static readonly Counter<long> MessagePersistenceFailed =
         Meter.CreateCounter<long>("message_persist_failed", unit: "messages");
+    public static readonly Counter<long> MessageRetentionDeleted =
+        Meter.CreateCounter<long>("message_retention_deleted", unit: "messages");
+    public static readonly Counter<long> MessageRetentionFailed =
+        Meter.CreateCounter<long>("message_retention_failed", unit: "failures");
     public static readonly Counter<long> LoginFailed =
         Meter.CreateCounter<long>("auth_login_failed", unit: "attempts");
     public static readonly Counter<long> AccountLocked =

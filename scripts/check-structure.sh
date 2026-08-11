@@ -19,6 +19,7 @@ test -f tests/Persistence.IntegrationTests/PostgresMigrationTests.cs
 test -x scripts/check-migrations.sh
 test -f tests/Identity.API.Tests/IdentityInputTests.cs
 test -f tests/FamilyGraph.API.Tests/FamilyInputTests.cs
+test -f tests/Message.API.Tests/MessageRetentionPolicyTests.cs
 test -f deploy/grafana/provisioning/dashboards/family-chat.json
 test -f deploy/prometheus/rules/family-chat.yml
 grep -q '^rule_files:' deploy/prometheus/prometheus.yml

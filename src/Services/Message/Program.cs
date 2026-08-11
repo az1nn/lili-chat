@@ -17,6 +17,8 @@ builder.AddFamilyChatObservability("message-svc");
 builder.Services.AddDbContext<MessageDbContext>(o =>
     o.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 builder.Services.AddHostedService<MessageOutboxPublisher>();
+builder.Services.AddSingleton(MessageRetentionPolicy.From(builder.Configuration));
+builder.Services.AddHostedService<MessageRetentionWorker>();
 var roomToken = InternalServiceAuth.RequiredToken(builder.Configuration, "InternalAuth:RoomToken");
 builder.Services.AddGrpcClient<RoomGrpc.RoomGrpcClient>(o =>
     o.Address = new Uri(builder.Configuration["Services:Room"] ?? "http://room-svc:8081"))
@@ -144,6 +146,7 @@ class MessageDbContext(DbContextOptions<MessageDbContext> options) : DbContext(o
     {
         b.Entity<MessageEntity>().ToTable("messages").HasKey(x => x.Id);
         b.Entity<MessageEntity>().HasIndex(x => new { x.RoomId, x.SentAt });
+        b.Entity<MessageEntity>().HasIndex(x => x.SentAt);
         b.Entity<MessageEntity>().Property(x => x.Content).HasMaxLength(2000);
         b.Entity<MessageOutboxMessage>().ToTable("outbox_messages").HasKey(x => x.Id);
         b.Entity<MessageOutboxMessage>().HasIndex(x => new { x.PublishedAt, x.NextAttemptAt, x.OccurredAt });

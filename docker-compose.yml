@@ -191,6 +191,10 @@ services:
       InternalAuth__RoomToken: ${INTERNAL_ROOM_TOKEN}
       ConnectionStrings__Default: Host=postgres-message;Database=message;Username=app;Password=${DB_PASS}
       Services__Room: http://room-svc:8081
+      MessageRetention__Days: ${MESSAGE_RETENTION_DAYS:-365}
+      MessageRetention__BatchSize: ${MESSAGE_RETENTION_BATCH_SIZE:-1000}
+      MessageRetention__MaxBatchesPerRun: ${MESSAGE_RETENTION_MAX_BATCHES:-10}
+      MessageRetention__IntervalMinutes: ${MESSAGE_RETENTION_INTERVAL_MINUTES:-360}
     depends_on:
       postgres-message: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }

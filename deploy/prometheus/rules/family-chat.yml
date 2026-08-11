@@ -30,6 +30,14 @@ groups:
           summary: Message persistence is repeatedly failing
           description: The Message consumer is failing persistence more than once every 20 seconds.
 
+      - alert: MessageRetentionFailures
+        expr: increase({__name__=~"message_retention_failed.*_total"}[1h]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Message retention cleanup failed
+          description: The Message Service could not enforce the configured data-retention policy.
+
   - name: family-chat-availability
     rules:
       - alert: TelemetryPipelineDown

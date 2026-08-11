@@ -10,7 +10,7 @@ Checks executed locally and in GitHub Actions through 2026-08-11:
 - `dotnet tool restore`: PASS; repository-pinned `dotnet-ef` 8.0.11 restored
 - `./scripts/check-migrations.sh`: PASS for Identity, Family Graph, Room, Message, and Notification using dedicated design-time factories; CI rejects unversioned model drift
 - `dotnet build FamilyChat.sln --no-restore`: PASS, zero warnings
-- `dotnet test FamilyChat.sln --no-build --no-restore`: PASS locally, 70 contract/authorization/security/input/retry tests; Docker-backed migration test skipped locally by design
+- `dotnet test FamilyChat.sln --no-build --no-restore`: PASS locally, 78 contract/authorization/security/input/retry/retention tests; Docker-backed migration test skipped locally by design
 - NuGet vulnerability audit: no known vulnerable direct or transitive packages across runtime and test projects after upgrading OpenTelemetry to 1.17.0, pinning MessagePack 2.5.302, aligning EF Core/Npgsql EF/dotnet-ef on 8.0.11, and updating xUnit to 2.9.3 with its Visual Studio runner 3.1.5
 - `npm ci`: PASS
 - `npm run typecheck`: PASS
@@ -32,7 +32,7 @@ Distributed runtime evidence:
 - CI built every Docker image, applied startup migrations, and waited until the complete Compose stack was healthy.
 - Playwright passed the two-user register → invite → SignalR message → persistence after reload → active access revocation flow.
 - k6 passed registration, login, room creation, and authorized history smoke checks against the live stack.
-- With `RUN_INTEGRATION_TESTS=1`, CI applied all five service migrations to isolated Testcontainers PostgreSQL databases and exercised advisory-lock exclusion, concurrent refresh replay, and duplicate message persistence.
+- With `RUN_INTEGRATION_TESTS=1`, CI applied all five service migrations to isolated Testcontainers PostgreSQL databases and exercised advisory-lock exclusion, concurrent refresh replay, duplicate message persistence, and bounded deletion of expired messages.
 
 Local runtime note:
 

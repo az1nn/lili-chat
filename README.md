@@ -8,7 +8,7 @@ Chat familiar distribuído baseado em React + .NET 8, com autenticação JWT, sa
 - **Family Graph Service**: projeção de usuários vindos do Identity, geração de `PublicId`, famílias e membros; gRPC para resolução de usuários.
 - **Room Service**: salas, membros, papéis Admin/Member/Muted; adição por `PublicId`; gRPC para autorização de acesso à sala.
 - **Realtime Hub**: SignalR autenticado, presença via Redis, validação de membro via gRPC, publicação de `MessageCreatedEvent`, confirmação de persistência, sincronização de roles e expulsão imediata de membros removidos.
-- **Message Service**: consumidor idempotente do evento e histórico REST.
+- **Message Service**: consumidor idempotente do evento, histórico REST e retenção configurável em lotes.
 - **Notification Service**: consumidor do evento e registro de auditoria de notificação (o provedor real de push/email fica como extensão).
 - **Gateway**: YARP com CORS, rate limit e proxy de HTTP/WebSocket.
 - **Web**: React + TypeScript + Vite com registro/login, criação/listagem de salas, chat, convite por `PublicId`, controles coerentes com Admin/Member/Muted e histórico incremental por cursor ao rolar para cima.
@@ -54,6 +54,8 @@ Credenciais RabbitMQ de desenvolvimento vêm do `.env`. Troque todos os segredos
 O dashboard provisionado **Family Chat Overview** compara `message_publish`, `message_persisted` e falhas. Uma diferença crescente entre publicação e persistência indica lag ou falha no consumidor. O mesmo dashboard acompanha falhas de login, lockouts, reutilização de refresh token, conexões SignalR ativas e falhas Redis/gRPC do realtime.
 
 O Prometheus carrega alertas versionados em `deploy/prometheus/rules/`: gap persistente entre mensagens publicadas/persistidas, outbox stalled, erros HTTP elevados, falhas Redis/gRPC, pipeline de telemetria indisponível, replay de refresh token e pico de lockouts. A CI valida configuração e PromQL com o `promtool` da mesma versão usada no Compose.
+
+O Message Service retém mensagens por 365 dias por padrão e remove conteúdo expirado em lotes limitados. Ajuste `MESSAGE_RETENTION_DAYS` por ambiente; valores aceitos ficam entre 1 e 3650 dias. Tamanho, máximo de lotes e intervalo também são configuráveis no Compose por `MESSAGE_RETENTION_BATCH_SIZE`, `MESSAGE_RETENTION_MAX_BATCHES` e `MESSAGE_RETENTION_INTERVAL_MINUTES`. Falhas de limpeza geram métrica e alerta, sem impedir leitura ou persistência do chat.
 
 O access token permanece somente em memória no navegador. O refresh token usa cookie `HttpOnly`; em produção ele também exige HTTPS para que o atributo `Secure` funcione.
 
