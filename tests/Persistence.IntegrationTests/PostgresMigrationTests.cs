@@ -152,6 +152,11 @@ public sealed class PostgresMigrationTests(PostgresFixture fixture) : IClassFixt
         Assert.Empty(await message.Database.GetPendingMigrationsAsync());
         Assert.Equal(0, await message.Messages.CountAsync());
         Assert.Equal(0, await message.OutboxMessages.CountAsync());
+        var historyIndex = Assert.Single(message.Model.FindEntityType(typeof(MessageEntity))!
+            .GetIndexes(), index => index.Properties
+                .Select(property => property.Name)
+                .SequenceEqual([nameof(MessageEntity.RoomId), nameof(MessageEntity.SentAt), nameof(MessageEntity.Id)]));
+        Assert.False(historyIndex.IsUnique);
 
         var duplicateEvent = new MessageCreatedEvent(
             Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "duplicate delivery",

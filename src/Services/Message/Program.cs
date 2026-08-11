@@ -145,7 +145,7 @@ class MessageDbContext(DbContextOptions<MessageDbContext> options) : DbContext(o
     protected override void OnModelCreating(ModelBuilder b)
     {
         b.Entity<MessageEntity>().ToTable("messages").HasKey(x => x.Id);
-        b.Entity<MessageEntity>().HasIndex(x => new { x.RoomId, x.SentAt });
+        b.Entity<MessageEntity>().HasIndex(x => new { x.RoomId, x.SentAt, x.Id });
         b.Entity<MessageEntity>().HasIndex(x => x.SentAt);
         b.Entity<MessageEntity>().Property(x => x.Content).HasMaxLength(2000);
         b.Entity<MessageOutboxMessage>().ToTable("outbox_messages").HasKey(x => x.Id);
