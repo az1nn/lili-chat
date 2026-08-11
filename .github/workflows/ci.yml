@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore backend
+        run: dotnet restore FamilyChat.sln
+
+      - name: Build backend
+        run: dotnet build FamilyChat.sln --configuration Release --no-restore
+
+      - name: Test backend
+        run: dotnet test FamilyChat.sln --configuration Release --no-build
+        env:
+          RUN_INTEGRATION_TESTS: "1"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/Web/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: src/Web
+        run: npm ci
+
+      - name: Type-check web
+        working-directory: src/Web
+        run: npm run typecheck
+
+      - name: Build web
+        working-directory: src/Web
+        run: npm run build
+
+      - name: Validate repository and Compose
+        run: |
+          ./scripts/check-structure.sh
+          docker compose config --quiet
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: validate
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/Web/package-lock.json
+
+      - name: Install web and browser dependencies
+        working-directory: src/Web
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Start distributed stack
+        run: |
+          cp .env.example .env
+          docker compose up --detach --build --wait --wait-timeout 240
+          curl --fail http://localhost:5000/health
+
+      - name: Run two-user browser flow
+        working-directory: src/Web
+        run: npm run test:e2e
+
+      - name: Run k6 smoke test
+        run: docker compose --profile test run --rm k6
+
+      - name: Capture container logs
+        if: failure()
+        run: docker compose logs --no-color --tail=300
+
+      - name: Stop distributed stack
+        if: always()
+        run: docker compose down --volumes
