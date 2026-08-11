@@ -131,4 +131,5 @@ static class NotificationStatuses
     public const string Failed = "failed";
     public const string ProviderDisabled = "provider-disabled";
     public const string NoRecipients = "no-recipients";
+    public const string TargetResolutionFailed = "target-resolution-failed";
 }

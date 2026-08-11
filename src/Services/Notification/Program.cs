@@ -71,6 +71,7 @@ class NotificationAudit
     public string RoomName { get; set; } = "";
     public DateTimeOffset CreatedAt { get; set; }
     public string Status { get; set; } = "queued";
+    public string? LastError { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }
     public List<NotificationDelivery> Deliveries { get; set; } = [];
 }
@@ -99,6 +100,7 @@ class NotificationDbContext(DbContextOptions<NotificationDbContext> options) : D
         b.Entity<NotificationAudit>().HasIndex(x => x.MessageId).IsUnique();
         b.Entity<NotificationAudit>().Property(x => x.Status).HasMaxLength(40);
         b.Entity<NotificationAudit>().Property(x => x.RoomName).HasMaxLength(100);
+        b.Entity<NotificationAudit>().Property(x => x.LastError).HasMaxLength(500);
         b.Entity<NotificationDelivery>().ToTable("notification_delivery").HasKey(x => x.Id);
         b.Entity<NotificationDelivery>().HasIndex(x => new { x.AuditId, x.UserId }).IsUnique();
         b.Entity<NotificationDelivery>().Property(x => x.Recipient).HasMaxLength(255);
@@ -137,7 +139,22 @@ class MessageNotificationConsumer(
         }
 
         if (audit.Deliveries.Count == 0)
-            await CreateDeliveries(audit, e, context.CancellationToken);
+        {
+            try
+            {
+                await CreateDeliveries(audit, e, context.CancellationToken);
+                audit.Status = NotificationStatuses.Queued;
+                audit.LastError = null;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                audit.Status = NotificationStatuses.TargetResolutionFailed;
+                audit.LastError = NotificationFailure.SafeMessage(ex);
+                FamilyChatMetrics.NotificationFailed.Add(1);
+                await db.SaveChangesAsync(context.CancellationToken);
+                throw;
+            }
+        }
         if (audit.Deliveries.Count == 0)
         {
             audit.Status = NotificationStatuses.NoRecipients;
