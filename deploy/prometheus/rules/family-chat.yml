@@ -1,0 +1,83 @@
+groups:
+  - name: family-chat-consistency
+    rules:
+      - alert: MessagePersistenceGapGrowing
+        expr: >-
+          sum({__name__=~"message_publish.*_total"})
+          - sum({__name__=~"message_persisted.*_total"}) > 10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Published messages are not reaching persistent history
+          description: More than 10 published messages have remained unpersisted for five minutes.
+
+      - alert: OutboxEventStalled
+        expr: sum by (service, event_type) ({__name__=~"outbox_stalled.*_total"}) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: An outbox event exceeded the retry threshold
+          description: "{{ $labels.service }} cannot publish {{ $labels.event_type }} after repeated attempts."
+
+      - alert: MessagePersistenceFailures
+        expr: sum(rate({__name__=~"message_persist_failed.*_total"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Message persistence is repeatedly failing
+          description: The Message consumer is failing persistence more than once every 20 seconds.
+
+  - name: family-chat-availability
+    rules:
+      - alert: TelemetryPipelineDown
+        expr: up{job="otel-collector"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: OpenTelemetry metrics pipeline is unavailable
+          description: Prometheus has not scraped the collector successfully for two minutes.
+
+      - alert: ElevatedHttpServerErrors
+        expr: >-
+          sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(http_server_request_duration_seconds_count[5m])), 0.001) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: HTTP 5xx ratio is above five percent
+          description: The distributed API has sustained an elevated server-error ratio for ten minutes.
+
+      - alert: RealtimeDependencyFailures
+        expr: >-
+          sum by (operation) (rate({__name__=~"(redis|grpc)_failures.*_total"}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Realtime dependencies are repeatedly unavailable
+          description: "{{ $labels.operation }} is failing more than once every ten seconds."
+
+  - name: family-chat-security
+    rules:
+      - alert: RefreshTokenReplayDetected
+        expr: increase({__name__=~"auth_refresh_replay_detected.*_total"}[10m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: Refresh-token reuse was detected
+          description: A revoked refresh token was presented again; its token family was revoked.
+
+      - alert: AuthenticationLockoutSpike
+        expr: sum(increase({__name__=~"auth_account_locked.*_total"}[10m])) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Account lockouts increased rapidly
+          description: More than ten account lockouts occurred within ten minutes.

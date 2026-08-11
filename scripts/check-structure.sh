@@ -13,6 +13,8 @@ test -f tests/Persistence.IntegrationTests/PostgresMigrationTests.cs
 test -f tests/Identity.API.Tests/IdentityInputTests.cs
 test -f tests/FamilyGraph.API.Tests/FamilyInputTests.cs
 test -f deploy/grafana/provisioning/dashboards/family-chat.json
+test -f deploy/prometheus/rules/family-chat.yml
+rg -q '^rule_files:' deploy/prometheus/prometheus.yml
 for svc in Identity FamilyGraph Room Message RealtimeHub Notification; do
   test -f "src/Services/$svc/Dockerfile"
   rg -q '^USER app$' "src/Services/$svc/Dockerfile"

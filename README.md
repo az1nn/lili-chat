@@ -53,6 +53,8 @@ Credenciais RabbitMQ de desenvolvimento vêm do `.env`. Troque todos os segredos
 
 O dashboard provisionado **Family Chat Overview** compara `message_publish`, `message_persisted` e falhas. Uma diferença crescente entre publicação e persistência indica lag ou falha no consumidor. O mesmo dashboard acompanha falhas de login, lockouts, reutilização de refresh token, conexões SignalR ativas e falhas Redis/gRPC do realtime.
 
+O Prometheus carrega alertas versionados em `deploy/prometheus/rules/`: gap persistente entre mensagens publicadas/persistidas, outbox stalled, erros HTTP elevados, falhas Redis/gRPC, pipeline de telemetria indisponível, replay de refresh token e pico de lockouts. A CI valida configuração e PromQL com o `promtool` da mesma versão usada no Compose.
+
 O access token permanece somente em memória no navegador. O refresh token usa cookie `HttpOnly`; em produção ele também exige HTTPS para que o atributo `Secure` funcione.
 
 Handlers validam os mesmos limites definidos no schema: username até 100, email até 255, senha até 128, nomes de sala/família até 100, descrições até 1000 e mensagens até 2000 caracteres. O frontend replica esses limites apenas para feedback imediato; o backend continua sendo a autoridade.

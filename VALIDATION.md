@@ -20,6 +20,7 @@ Checks executed in the development environment on 2026-08-10:
 - The E2E requires an actively connected removed member to be evicted from the SignalR room without reloading
 - `node --check deploy/k6/smoke.js`: PASS; the smoke gate measures register, login, room creation, and authorized history independently
 - Grafana dashboard JSON parse: PASS; message consistency, authentication-security, SignalR connection, and realtime dependency panels are provisioned
+- Prometheus rules are mounted by Compose; CI validates configuration and PromQL with `promtool` 2.54.1
 - Internal gRPC calls use three-second deadlines and controlled unavailable responses
 
 Runtime checks still required:

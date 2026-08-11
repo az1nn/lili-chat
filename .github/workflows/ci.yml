@@ -57,6 +57,13 @@ jobs:
           ./scripts/check-structure.sh
           docker compose config --quiet
 
+      - name: Validate Prometheus configuration and alerts
+        run: |
+          docker run --rm --entrypoint promtool \
+            --volume "$PWD/deploy/prometheus:/etc/prometheus:ro" \
+            prom/prometheus:v2.54.1 \
+            check config /etc/prometheus/prometheus.yml
+
   e2e:
     runs-on: ubuntu-latest
     needs: validate
