@@ -1,6 +1,6 @@
 # Validation notes
 
-Checks executed in the development environment on 2026-08-10:
+Checks executed locally and in GitHub Actions through 2026-08-11:
 
 - `./scripts/check-structure.sh`: PASS
 - `docker compose config --quiet`: PASS
@@ -10,7 +10,7 @@ Checks executed in the development environment on 2026-08-10:
 - `dotnet tool restore`: PASS; repository-pinned `dotnet-ef` 8.0.4 restored
 - `dotnet ef migrations has-pending-model-changes`: PASS for Identity, Family Graph, Room, Message, and Notification
 - `dotnet build FamilyChat.sln --no-restore`: PASS, zero warnings
-- `dotnet test FamilyChat.sln --no-build --no-restore`: PASS, 68 contract/authorization/security/input/retry tests; Docker-backed migration test skipped locally by design
+- `dotnet test FamilyChat.sln --no-build --no-restore`: PASS locally, 68 contract/authorization/security/input/retry tests; Docker-backed migration test skipped locally by design
 - `npm ci`: PASS
 - `npm run typecheck`: PASS
 - `npm test`: PASS, 3 React/API authentication tests across 2 files
@@ -23,12 +23,17 @@ Checks executed in the development environment on 2026-08-10:
 - Prometheus rules are mounted by Compose; CI validates configuration and PromQL with `promtool` 2.54.1
 - Internal gRPC calls use three-second deadlines and controlled unavailable responses
 
-Runtime checks still required:
+Distributed runtime evidence:
 
-- `docker compose build/up`: not executed because the host Docker daemon is stopped and requires administrator credentials to start.
-- Full execution of the Playwright two-user E2E and k6 smoke tests depends on the running Compose stack.
-- Migration application during full service startup depends on the running Compose stack.
-- `RUN_INTEGRATION_TESTS=1 dotnet test tests/Persistence.IntegrationTests` depends on Docker; CI executes this gate against five isolated PostgreSQL databases, verifies advisory-lock exclusion, concurrent refresh replay, and duplicate message persistence with one history/outbox row.
+- [GitHub Actions run 31449917275](https://github.com/az1nn/lili-chat/actions/runs/31449917275): PASS for both `validate` and `e2e` jobs.
+- CI built every Docker image, applied startup migrations, and waited until the complete Compose stack was healthy.
+- Playwright passed the two-user register → invite → SignalR message → persistence after reload → active access revocation flow.
+- k6 passed registration, login, room creation, and authorized history smoke checks against the live stack.
+- With `RUN_INTEGRATION_TESTS=1`, CI applied all five service migrations to isolated Testcontainers PostgreSQL databases and exercised advisory-lock exclusion, concurrent refresh replay, and duplicate message persistence.
+
+Local runtime note:
+
+- The workstation Docker daemon remains stopped, so the same distributed gates cannot currently be repeated locally. The remote Linux runner is the authoritative runtime evidence above.
 
 Once Docker is available, run:
 
