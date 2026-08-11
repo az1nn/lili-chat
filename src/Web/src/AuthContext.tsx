@@ -80,9 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function logout() {
     try {
-      if (tokenRef.current) {
-        await api<void>('/api/v1/auth/logout', { method: 'POST', headers: csrfHeaders })
-      }
+      await api<void>('/api/v1/auth/logout', { method: 'POST', headers: csrfHeaders })
     } catch {}
     clearSession()
   }

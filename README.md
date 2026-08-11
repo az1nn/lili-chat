@@ -83,7 +83,7 @@ O restore nunca aceita os nomes dos bancos ativos. Ele exige um sufixo `_restore
 
 Defina `CLEANUP_RESTORED_DATABASES=1` para remover os bancos temporários depois do drill. A CI executa backup e restore dos cinco bancos após o E2E; armazene dumps reais fora da máquina de origem, criptografados e com controle de acesso.
 
-O access token permanece somente em memória no navegador. O refresh token usa cookie `HttpOnly`; em produção ele também exige HTTPS para que o atributo `Secure` funcione.
+O access token permanece somente em memória no navegador. O refresh token usa cookie `HttpOnly`; em produção ele também exige HTTPS para que o atributo `Secure` funcione. Refresh e logout exigem o header CSRF, e o logout revoga a família do refresh token pelo cookie mesmo quando o access token já expirou.
 
 Handlers validam os mesmos limites definidos no schema: username até 100, email até 255, senha até 128, nomes de sala/família até 100, descrições até 1000 e mensagens até 2000 caracteres. O frontend replica esses limites apenas para feedback imediato; o backend continua sendo a autoridade.
 

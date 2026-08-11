@@ -6,7 +6,7 @@ bbadc572275abfb0fa1e35d0dca9023133788362614a974387232c5ee7848a08  ./.gitignore
 e74389ff86d8ee6d24eb4c0d76aac9bbb0d0457d3d3f333f00489cfc50aa6111  ./AGENTS.md
 55d337167ae3b23153576b85589ebeb848672a4bfe6c812f1cd0748de9ce8a71  ./DEPLOYMENT.md
 5b866cccbd355fefcfeb908beac99ef5e97ddad9676fee1d136c063384f7a2e9  ./FamilyChat.sln
-50604be92e219c6318161935e350640becd7214f9d0c236095d7ab4449ee3310  ./README.md
+fd6cc4460fa791f347c16d1fd44beb66d98d2b637ce981cf39cab0b358fa4596  ./README.md
 849cde782702e5d7fc3813859aff513d6746a12b47ef0a35a3ca22f31f400777  ./VALIDATION.md
 53ef2a30eb96388b1ca115bdab197fdab35ea7dfe62fe40d71d5581ee8d8207a  ./deploy/grafana/provisioning/dashboards/family-chat.json
 802c7ce9fbfe5fac986d57b3f4fce0ae6470b5a3151bcf5cce6065eea45ce347  ./deploy/grafana/provisioning/dashboards/provider.yml
@@ -39,7 +39,7 @@ dd45cdcad8746849ad0de26bf4b38f257b8980d9aeb091bbdc3ea1a3289f9793  ./src/Services
 a17030fc8e52270f4e8d8f756334d58734722c416990e5d17ae574470a6799a8  ./src/Services/Identity/IdentityDbContextFactory.cs
 cfbec81757d6cef56b3ae0451912a4a37ce3d9d3d9cc54bd1faf1a7b8e289569  ./src/Services/Identity/Migrations/202608100001_InitialCreate.cs
 d20a41dd60e26db3743870efdae03ca35fcf92fb2dffd9e3589d5a4400b54cf7  ./src/Services/Identity/Migrations/IdentityDbContextModelSnapshot.cs
-7367b25c31a93d0252439522a7bdbe1d43b9a27252ce5776f15ffc84abd1ff1a  ./src/Services/Identity/Program.cs
+0aac885312a4695e5307f4db61def0a3c234f2ec2930470d32160a09f3f813ef  ./src/Services/Identity/Program.cs
 a3a165d3eea6757f53c6ee1463d333f113b3f7cb1b8ff5500273c9dd9318829b  ./src/Services/Identity/Properties/AssemblyInfo.cs
 22c27f7ba6eadd0a4e5295c6a02febf6347ec5b1af429f853c86cd520fe084f9  ./src/Services/Message/Dockerfile
 8fda7b41048b2e7aeb88d1bc879c971ff62386daec99a31c7d2461400867d452  ./src/Services/Message/Message.API.csproj
@@ -89,7 +89,7 @@ ac6fe462c3d39859fde2a7932995c3d46fdf148866c6c675d488979cde5f075f  ./src/Web/pack
 9b7375fd5f300ca1cc9d1da331225c5aba973f7ac4ac3b8ceda953ccd1464364  ./src/Web/playwright.config.ts
 b88ae69d56eff4b26a80c70835e7d66f1202000da6533529d2aaa19f21f8ae06  ./src/Web/src/App.test.tsx
 d01c86f560dac771732674a68dde4d317716ee3976c0069e2c994c5adafc4374  ./src/Web/src/App.tsx
-961f53edbec61e6ecd2ed01b9d119ae948ca4081fdef24747abf4426b7096a25  ./src/Web/src/AuthContext.tsx
+a4e2f8aea5f5d3ef65da2ef872cb46729e4bba9df77767c09f2d6111d8e08a00  ./src/Web/src/AuthContext.tsx
 70488f59372d69a55b8fd6afe44ba1e98dce3d0a2da98cecec42bed7b55a802a  ./src/Web/src/ChatPanel.test.tsx
 fe44822af03936881b49118926f24a79883d12badcab4887d573bf03a4e3a7bc  ./src/Web/src/api.test.ts
 fb9cbfa596d9d38b06fb80e95244e889d8b592b01e3843b7a4c1a493f0644de2  ./src/Web/src/api.ts
@@ -122,7 +122,7 @@ f36194fd978ed88d9006b899424c1ff9d2d947560bbe2d2703a3a35380f90358  ./tests/Messag
 05ab5da9eb244458b59220623cae1f217df982475c58f2268d9d47a7036e3060  ./tests/Notification.API.Tests/Notification.API.Tests.csproj
 615ec2f29e87541be3859a1ccb5f61de6fcbc769d386a4c7e8f5060078d4be26  ./tests/Notification.API.Tests/NotificationDeliveryTests.cs
 edbc9d9da97982fb252817f92e23d5d4234b1dd05c98411c37822baca693f72c  ./tests/Persistence.IntegrationTests/Persistence.IntegrationTests.csproj
-859146fce2b8cf49ca5366d6eb2de94b5c93a63d3601051c69def3aabfc6cf59  ./tests/Persistence.IntegrationTests/PostgresMigrationTests.cs
+2c3b5eb243559bea2b9e44b55aee458baa7d253c57f13f237ac408439b68cc9a  ./tests/Persistence.IntegrationTests/PostgresMigrationTests.cs
 757d16dad6181d3e1e9be85911ed532cc9ecb1338f23e483f1f8e9343e4d3b61  ./tests/Room.API.Tests/JwtKeyFactoryTests.cs
 786019550f9c61d7769ae37fb05611be4a9b0280870c00e2b07679659d6669d1  ./tests/Room.API.Tests/OutboxRetryTests.cs
 8d059e2622ccbbf9aaad5f24cabb7088ba3c5a974a552f88dfc4edf30299c058  ./tests/Room.API.Tests/Room.API.Tests.csproj

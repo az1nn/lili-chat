@@ -195,31 +195,14 @@ app.MapPost("/api/v1/auth/logout", async (
     CancellationToken ct) =>
 {
     if (!HasCsrfHeader(http.Request)) return Results.Unauthorized();
-    if (!TryUserId(http.User, out var userId)) return Results.Unauthorized();
     if (http.Request.Cookies.TryGetValue(AuthCookies.RefreshToken, out var refreshToken))
-    {
-        var hash = TokenFactory.Hash(refreshToken);
-        var token = await db.RefreshTokens.FirstOrDefaultAsync(
-            t => t.UserId == userId && t.TokenHash == hash, ct);
-        if (token is not null)
-        {
-            await db.RefreshTokens
-                .Where(t => t.UserId == userId && t.FamilyId == token.FamilyId && t.RevokedAt == null)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(
-                    t => t.RevokedAt, DateTimeOffset.UtcNow), ct);
-        }
-    }
+        await RefreshTokenStore.RevokeFamilyAsync(
+            db, TokenFactory.Hash(refreshToken), ct);
     ClearRefreshCookie(http.Response, app.Environment.IsDevelopment());
     return Results.NoContent();
-}).RequireAuthorization();
+});
 
 await app.RunAsync();
-
-static bool TryUserId(ClaimsPrincipal principal, out Guid id)
-{
-    var raw = principal.FindFirstValue("sub") ?? principal.FindFirstValue(ClaimTypes.NameIdentifier);
-    return Guid.TryParse(raw, out id);
-}
 
 static bool HasCsrfHeader(HttpRequest request) =>
     request.Headers.TryGetValue("X-FamilyChat-CSRF", out var value) && value == "1";
@@ -352,6 +335,23 @@ record RefreshRotationResult(
 
 static class RefreshTokenStore
 {
+    public static async Task<bool> RevokeFamilyAsync(
+        IdentityDbContext db,
+        string tokenHash,
+        CancellationToken cancellationToken)
+    {
+        var token = await db.RefreshTokens.AsNoTracking()
+            .FirstOrDefaultAsync(value => value.TokenHash == tokenHash, cancellationToken);
+        if (token is null) return false;
+
+        await db.RefreshTokens
+            .Where(value => value.UserId == token.UserId &&
+                value.FamilyId == token.FamilyId && value.RevokedAt == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(
+                value => value.RevokedAt, DateTimeOffset.UtcNow), cancellationToken);
+        return true;
+    }
+
     public static async Task<RefreshRotationResult> RotateAsync(
         IdentityDbContext db,
         string tokenHash,

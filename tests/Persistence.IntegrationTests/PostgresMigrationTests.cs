@@ -113,6 +113,28 @@ public sealed class PostgresMigrationTests(PostgresFixture fixture) : IClassFixt
         Assert.Equal(0, await verificationDb.RefreshTokens.CountAsync(
             token => token.FamilyId == familyId && token.RevokedAt == null));
 
+        var logoutFamilyId = Guid.NewGuid();
+        const string logoutTokenHash = "logout-refresh-token-hash";
+        verificationDb.RefreshTokens.AddRange(
+            new RefreshToken
+            {
+                Id = Guid.NewGuid(), UserId = userId, FamilyId = logoutFamilyId,
+                TokenHash = logoutTokenHash, ExpiresAt = DateTimeOffset.UtcNow.AddDays(1)
+            },
+            new RefreshToken
+            {
+                Id = Guid.NewGuid(), UserId = userId, FamilyId = logoutFamilyId,
+                TokenHash = "logout-rotated-token-hash", ExpiresAt = DateTimeOffset.UtcNow.AddDays(1)
+            });
+        await verificationDb.SaveChangesAsync();
+
+        Assert.True(await RefreshTokenStore.RevokeFamilyAsync(
+            verificationDb, logoutTokenHash, CancellationToken.None));
+        Assert.False(await RefreshTokenStore.RevokeFamilyAsync(
+            verificationDb, "unknown-token-hash", CancellationToken.None));
+        Assert.Equal(0, await verificationDb.RefreshTokens.CountAsync(
+            token => token.FamilyId == logoutFamilyId && token.RevokedAt == null));
+
         await using var family = new FamilyDbContext(Options<FamilyDbContext>("family_test"));
         await family.Database.MigrateAsync();
         Assert.Empty(await family.Database.GetPendingMigrationsAsync());
