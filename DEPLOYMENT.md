@@ -132,7 +132,7 @@ Replace hostnames and ports with the exact private-network values shown by Rende
 
 Set `ASPNETCORE_ENVIRONMENT=Production` everywhere. Generate RSA keys as described in `README.md`: only Identity receives `JWT__PrivateKeyBase64`; validators receive `JWT__PublicKeyBase64`. Set the same issuer/audience everywhere and distinct random `InternalAuth__FamilyToken` and `InternalAuth__RoomToken` values of at least 32 bytes.
 
-Also configure RabbitMQ credentials, five `ConnectionStrings__Default` values, Redis authentication/TLS, OTLP destination, and SMTP secrets. Use Render secret environment variables; never copy `.env` to production. Set health checks to `/health`, enable automatic deploy only after CI passes, and run at least one instance of every required service.
+Also configure non-guest `RabbitMQ__User` and `RabbitMQ__Pass` credentials, five `ConnectionStrings__Default` values, Redis authentication/TLS, OTLP destination, and SMTP secrets. Every service now refuses missing or `guest` RabbitMQ credentials outside Development. Use Render secret environment variables; never copy `.env` to production. Set health checks to `/health`, enable automatic deploy only after CI passes, and run at least one instance of every required service.
 
 ## Release verification
 

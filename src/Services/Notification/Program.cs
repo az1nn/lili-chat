@@ -22,6 +22,8 @@ builder.Services.AddGrpcClient<RoomGrpc.RoomGrpcClient>(o =>
 var notificationOptions = NotificationOptions.Load(builder.Configuration);
 builder.Services.AddSingleton(notificationOptions);
 builder.Services.AddSingleton<INotificationSender, SmtpNotificationSender>();
+var rabbitMq = RabbitMqCredentials.Load(
+    builder.Configuration, builder.Environment.IsDevelopment());
 
 builder.Services.AddMassTransit(x =>
 {
@@ -31,8 +33,8 @@ builder.Services.AddMassTransit(x =>
     {
         cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "rabbitmq", "/", h =>
         {
-            h.Username(builder.Configuration["RabbitMQ:User"] ?? "guest");
-            h.Password(builder.Configuration["RabbitMQ:Pass"] ?? "guest");
+            h.Username(rabbitMq.Username);
+            h.Password(rabbitMq.Password);
         });
         cfg.UseMessageRetry(r => r.Exponential(
             retryLimit: 5,

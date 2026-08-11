@@ -36,6 +36,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         o.TokenValidationParameters = JwtValidation(builder.Configuration, builder.Environment);
     });
 builder.Services.AddAuthorization();
+var rabbitMq = RabbitMqCredentials.Load(
+    builder.Configuration, builder.Environment.IsDevelopment());
 
 builder.Services.AddMassTransit(x =>
 {
@@ -44,8 +46,8 @@ builder.Services.AddMassTransit(x =>
     {
         cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "rabbitmq", "/", h =>
         {
-            h.Username(builder.Configuration["RabbitMQ:User"] ?? "guest");
-            h.Password(builder.Configuration["RabbitMQ:Pass"] ?? "guest");
+            h.Username(rabbitMq.Username);
+            h.Password(rabbitMq.Password);
         });
         cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(1)));
         cfg.ConfigureEndpoints(ctx);

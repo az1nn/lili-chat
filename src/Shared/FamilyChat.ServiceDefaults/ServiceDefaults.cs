@@ -235,3 +235,22 @@ public static class InternalServiceAuth
         return app;
     }
 }
+
+public sealed record RabbitMqCredentials(string Username, string Password)
+{
+    public static RabbitMqCredentials Load(IConfiguration configuration, bool isDevelopment)
+    {
+        var username = configuration["RabbitMQ:User"]?.Trim();
+        var password = configuration["RabbitMQ:Pass"];
+        if (isDevelopment)
+            return new(username ?? "guest", password ?? "guest");
+
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            throw new InvalidOperationException(
+                "RabbitMQ:User and RabbitMQ:Pass are required outside Development.");
+        if (username.Equals("guest", StringComparison.OrdinalIgnoreCase) || password == "guest")
+            throw new InvalidOperationException(
+                "RabbitMQ guest credentials are not allowed outside Development.");
+        return new(username, password);
+    }
+}

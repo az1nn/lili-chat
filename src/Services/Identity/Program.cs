@@ -30,6 +30,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         o.TokenValidationParameters = jwt.ValidationParameters(validateLifetime: true);
     });
 builder.Services.AddAuthorization();
+var rabbitMq = RabbitMqCredentials.Load(
+    builder.Configuration, builder.Environment.IsDevelopment());
 
 builder.Services.AddMassTransit(x =>
 {
@@ -38,8 +40,8 @@ builder.Services.AddMassTransit(x =>
         var host = builder.Configuration["RabbitMQ:Host"] ?? "rabbitmq";
         cfg.Host(host, "/", h =>
         {
-            h.Username(builder.Configuration["RabbitMQ:User"] ?? "guest");
-            h.Password(builder.Configuration["RabbitMQ:Pass"] ?? "guest");
+            h.Username(rabbitMq.Username);
+            h.Password(rabbitMq.Password);
         });
         cfg.ConfigureEndpoints(ctx);
     });
