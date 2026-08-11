@@ -42,6 +42,7 @@ var rabbitMq = RabbitMqCredentials.Load(
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<MessageCreatedConsumer>();
+    x.AddConsumer<UserDeletedMessageConsumer>();
     x.UsingRabbitMq((ctx, cfg) =>
     {
         cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "rabbitmq", "/", h =>
@@ -144,16 +145,25 @@ class MessageDbContext(DbContextOptions<MessageDbContext> options) : DbContext(o
 {
     public DbSet<MessageEntity> Messages => Set<MessageEntity>();
     public DbSet<MessageOutboxMessage> OutboxMessages => Set<MessageOutboxMessage>();
+    public DbSet<DeletedMessageUser> DeletedUsers => Set<DeletedMessageUser>();
     protected override void OnModelCreating(ModelBuilder b)
     {
         b.Entity<MessageEntity>().ToTable("messages").HasKey(x => x.Id);
         b.Entity<MessageEntity>().HasIndex(x => new { x.RoomId, x.SentAt, x.Id });
         b.Entity<MessageEntity>().HasIndex(x => x.SentAt);
+        b.Entity<MessageEntity>().HasIndex(x => x.SenderId);
         b.Entity<MessageEntity>().Property(x => x.Content).HasMaxLength(2000);
         b.Entity<MessageOutboxMessage>().ToTable("outbox_messages").HasKey(x => x.Id);
         b.Entity<MessageOutboxMessage>().HasIndex(x => new { x.PublishedAt, x.NextAttemptAt, x.OccurredAt });
         b.Entity<MessageOutboxMessage>().Property(x => x.Type).HasMaxLength(200);
+        b.Entity<DeletedMessageUser>().ToTable("deleted_users").HasKey(x => x.UserId);
     }
+}
+
+class DeletedMessageUser
+{
+    public Guid UserId { get; set; }
+    public DateTimeOffset DeletedAt { get; set; }
 }
 
 class MessageCreatedConsumer(MessageDbContext db, ILogger<MessageCreatedConsumer> logger)
@@ -164,6 +174,10 @@ class MessageCreatedConsumer(MessageDbContext db, ILogger<MessageCreatedConsumer
         try
         {
             var e = context.Message;
+            await using var userLock = await PostgresAdvisoryLock.TryAcquireAsync(
+                db.Database.GetDbConnection(), MessageUserDeletion.LockKey(e.SenderId),
+                context.CancellationToken)
+                ?? throw new InvalidOperationException($"Message sender {e.SenderId} is being deleted.");
             var inserted = await MessagePersistence.TryPersistAsync(
                 db, e, context.CancellationToken);
             if (!inserted)
@@ -183,6 +197,27 @@ class MessageCreatedConsumer(MessageDbContext db, ILogger<MessageCreatedConsumer
     }
 }
 
+class UserDeletedMessageConsumer(
+    MessageDbContext db,
+    ILogger<UserDeletedMessageConsumer> logger) : IConsumer<UserDeletedEvent>
+{
+    public async Task Consume(ConsumeContext<UserDeletedEvent> context)
+    {
+        var message = context.Message;
+        await using var userLock = await PostgresAdvisoryLock.TryAcquireAsync(
+            db.Database.GetDbConnection(), MessageUserDeletion.LockKey(message.UserId),
+            context.CancellationToken)
+            ?? throw new InvalidOperationException($"Messages for user {message.UserId} are being changed.");
+        var result = await MessageUserDeletion.ApplyAsync(
+            db, message.UserId, message.OccurredAt, context.CancellationToken);
+        if (result.Applied)
+            logger.LogInformation("Erased {MessageCount} messages for deleted user {UserId}",
+                result.DeletedMessages, message.UserId);
+        else
+            logger.LogInformation("Duplicate UserDeletedEvent ignored for {UserId}", message.UserId);
+    }
+}
+
 static class MessagePersistence
 {
     public static async Task<bool> TryPersistAsync(
@@ -190,6 +225,8 @@ static class MessagePersistence
         MessageCreatedEvent message,
         CancellationToken ct)
     {
+        if (await db.DeletedUsers.AnyAsync(user => user.UserId == message.SenderId, ct))
+            return false;
         if (await db.Messages.AnyAsync(m => m.Id == message.MessageId, ct))
             return false;
 
@@ -221,6 +258,33 @@ static class MessagePersistence
             db.ChangeTracker.Clear();
             return false;
         }
+    }
+}
+
+readonly record struct MessageDeletionResult(bool Applied, int DeletedMessages);
+
+static class MessageUserDeletion
+{
+    public static long LockKey(Guid userId) => BitConverter.ToInt64(userId.ToByteArray());
+
+    public static async Task<MessageDeletionResult> ApplyAsync(
+        MessageDbContext db, Guid userId, DateTimeOffset deletedAt, CancellationToken ct)
+    {
+        if (await db.DeletedUsers.AnyAsync(user => user.UserId == userId, ct))
+            return new MessageDeletionResult(false, 0);
+
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var deleted = await db.Messages
+            .Where(message => message.SenderId == userId)
+            .ExecuteDeleteAsync(ct);
+        db.DeletedUsers.Add(new DeletedMessageUser
+        {
+            UserId = userId,
+            DeletedAt = deletedAt
+        });
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return new MessageDeletionResult(true, deleted);
     }
 }
 
