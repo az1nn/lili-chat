@@ -1,0 +1,42 @@
+namespace FamilyChat.Contracts.Events;
+
+public record UserRegisteredEvent(
+    Guid CorrelationId,
+    Guid UserId,
+    string Username,
+    string Email,
+    DateTimeOffset OccurredAt);
+
+public record MessageCreatedEvent(
+    Guid MessageId,
+    Guid RoomId,
+    Guid SenderId,
+    string Content,
+    DateTimeOffset SentAt,
+    Guid CorrelationId);
+
+public record MessagePersistedEvent(
+    Guid MessageId,
+    Guid RoomId,
+    DateTimeOffset PersistedAt,
+    Guid CorrelationId);
+
+public record RoomCreatedEvent(
+    Guid RoomId,
+    Guid OwnerId,
+    string Name,
+    DateTimeOffset OccurredAt);
+
+public record RoomMemberAddedEvent(
+    Guid RoomId,
+    Guid UserId,
+    Guid AddedById,
+    string Role,
+    DateTimeOffset OccurredAt);
+
+public record RoomMemberRemovedEvent(
+    Guid RoomId,
+    Guid UserId,
+    Guid RemovedById,
+    string Reason,
+    DateTimeOffset OccurredAt);

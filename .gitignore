@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+node_modules/
+dist/
+playwright-report/
+test-results/
+.vscode/
+.idea/
+.DS_Store
+*.user
+*.suo
+*.pem
+.env
+.env.*
+!.env.example

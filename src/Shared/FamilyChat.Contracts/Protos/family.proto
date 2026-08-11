@@ -1,0 +1,24 @@
+syntax = "proto3";
+option csharp_namespace = "FamilyChat.Contracts.Family";
+package family;
+
+service FamilyGraphGrpc {
+  rpc ResolvePublicId (ResolvePublicIdRequest) returns (UserInfoResponse);
+  rpc GetUsersByIds (GetUsersByIdsRequest) returns (UsersResponse);
+  rpc GetUserById (GetUserByIdRequest) returns (UserInfoResponse);
+}
+
+message ResolvePublicIdRequest { string public_id = 1; }
+message GetUserByIdRequest { string user_id = 1; }
+message GetUsersByIdsRequest { repeated string user_ids = 1; }
+
+message UserInfoResponse {
+  bool found = 1;
+  string user_id = 2;
+  string public_id = 3;
+  string username = 4;
+  string email = 5;
+  string avatar_url = 6;
+}
+
+message UsersResponse { repeated UserInfoResponse users = 1; }

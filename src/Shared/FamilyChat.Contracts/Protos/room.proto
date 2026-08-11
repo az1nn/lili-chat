@@ -1,0 +1,27 @@
+syntax = "proto3";
+option csharp_namespace = "FamilyChat.Contracts.Room";
+package room;
+
+service RoomGrpc {
+  rpc IsMemberOfRoom (IsMemberRequest) returns (IsMemberResponse);
+  rpc GetRoomSummary (GetRoomSummaryRequest) returns (RoomSummary);
+}
+
+message IsMemberRequest {
+  string room_id = 1;
+  string user_id = 2;
+}
+
+message IsMemberResponse {
+  bool is_member = 1;
+  string role = 2;
+  bool can_send_messages = 3;
+}
+
+message GetRoomSummaryRequest { string room_id = 1; }
+
+message RoomSummary {
+  string id = 1;
+  string name = 2;
+  int32 members_count = 3;
+}
