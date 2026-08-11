@@ -1,12 +1,12 @@
 3cb8b671d0fbaf91212cf8eb161969acea26578b9e2910ef11851a542f05a8e5  ./.config/dotnet-tools.json
 c16184fcc1a9f92e43d8f7bb079bb1c86d07d555071e87acbad16b0b83b83d14  ./.dockerignore
 72f902db0f7bdbedf2f95e5f6935fd82c68977e74c46a87936f2519d599f98dd  ./.env.example
-41bddc6b562872071690eb736ac18188109e21721446ffbc3d81cfd1836a6c8c  ./.github/workflows/ci.yml
+390ee472c5b5312f7d05a850af94c8df84d6a934bc8a214a97496f887aeed279  ./.github/workflows/ci.yml
 bbadc572275abfb0fa1e35d0dca9023133788362614a974387232c5ee7848a08  ./.gitignore
 e74389ff86d8ee6d24eb4c0d76aac9bbb0d0457d3d3f333f00489cfc50aa6111  ./AGENTS.md
 2a72db08877e6544054a931132146bef59c4a181eaa66aa16ebf4a6ccbedaf01  ./FamilyChat.sln
-b3d65dd60f2c37d808b8966e78a1806096d587ed289f7c6e8a34c6c8a53dd2bd  ./README.md
-9162b97fdf9afc6d15e8c090c4517a11cb88ce95e59697650d0697ec784209d6  ./VALIDATION.md
+5b1356a0e8ba06e0a0ab352063dd735daec9c083adf0b291d37615a372098683  ./README.md
+fbc27e2f73568787de98777863809e258610e885ee470486aa2763b0a8146341  ./VALIDATION.md
 02d5f113b367836c4d8000946c3f71ce42830bdec13708ad1387551c836e561a  ./deploy/grafana/provisioning/dashboards/family-chat.json
 802c7ce9fbfe5fac986d57b3f4fce0ae6470b5a3151bcf5cce6065eea45ce347  ./deploy/grafana/provisioning/dashboards/provider.yml
 20d45a357cc7ae559b60b0c17b49f714a24266bd0a92f26b89070d3e14c1a80e  ./deploy/grafana/provisioning/datasources/datasource.yml
@@ -16,7 +16,7 @@ b3d65dd60f2c37d808b8966e78a1806096d587ed289f7c6e8a34c6c8a53dd2bd  ./README.md
 3d0b27b1c08b28475f53ed8b8b6d81e8b1a8c7b4385a6c0e77cc4debd9dbc748  ./deploy/prometheus/rules/family-chat.yml
 0cb114d7ea3176915fb5b39166e1cc9648fbf9bb0ace3c70cb7712c014c31198  ./docker-compose.yml
 d60270a4dff30afa64f431eec5cef62b96916d9e3ca4d4812e3cf77cec4d9838  ./scripts/check-migrations.sh
-362e206be6a492380e6578e1e7f9b210c0a426b04dd9e0dbabeb114649bf575d  ./scripts/check-structure.sh
+2913faec8770b5089bb1acb1793e82a103eeab5599c36859224a3e0fe707d4e4  ./scripts/check-structure.sh
 59fa6a64740ca44c8b8196fb6ed914f14c5194845208e4954755edb58f9d213a  ./src/.dockerignore
 6aa568f12f6f518cf49ae195de763e51b4b849025b0f3777858785b4db4a0803  ./src/Gateway/Dockerfile
 1d85de5e7c2469eaf849c0b6c40ae920026fca7e7f432768e1d856864be2a4a5  ./src/Gateway/Gateway.csproj
@@ -68,7 +68,7 @@ b9f7af7f2281ed03ab9e8542d1c6e5d6a9b85ecc17466ed63c08044553e78c16  ./src/Shared/F
 5deab38b23ee8cbcc8ce8c3bb94cb535c64d6ce9d8a34a04276861426fa20ae1  ./src/Shared/FamilyChat.ServiceDefaults/ServiceDefaults.cs
 2da5c34400c496c1384b78b1df823f3af92d103906bcab53df226c173eba5f0c  ./src/Web/Dockerfile
 b264f53eef4835124129c985e740eca7c0e1ff44e5793da81e0ed2d6ca4db137  ./src/Web/index.html
-987b233dd8521d322810d4d495b2149a0358fcebf3ada73df43fbb8c629f2277  ./src/Web/nginx.conf
+886d72370faa2b43a15ad7abe358913ca39fe15a93fc3c7d112a6eb95bc8a1e7  ./src/Web/nginx.conf
 ffab6ac3b49f656626181eba20db5bbb63e7bbb9e0a9a33949849ed682da8e9c  ./src/Web/package-lock.json
 ac6fe462c3d39859fde2a7932995c3d46fdf148866c6c675d488979cde5f075f  ./src/Web/package.json
 9b7375fd5f300ca1cc9d1da331225c5aba973f7ac4ac3b8ceda953ccd1464364  ./src/Web/playwright.config.ts

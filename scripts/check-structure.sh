@@ -8,6 +8,12 @@ test -f src/Web/package-lock.json
 test -f src/Web/playwright.config.ts
 test -f src/Web/src/App.test.tsx
 test -f src/Web/src/api.test.ts
+grep -q '^log_format familychat_safe ' src/Web/nginx.conf
+grep -q '^access_log .* familychat_safe;' src/Web/nginx.conf
+if grep -Eq '\$(request_uri|args|query_string)([^A-Za-z_]|$)' src/Web/nginx.conf; then
+  echo "Nginx não pode registrar query strings; elas podem conter o token SignalR" >&2
+  exit 1
+fi
 test -f src/Web/tests/e2e/chat-flow.spec.ts
 test -f tests/Persistence.IntegrationTests/PostgresMigrationTests.cs
 test -x scripts/check-migrations.sh

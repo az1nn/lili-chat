@@ -16,6 +16,7 @@ Checks executed locally and in GitHub Actions through 2026-08-11:
 - `npm run typecheck`: PASS
 - `npm test`: PASS, 13 React/API/history/authorization tests across 5 files
 - `npm run build`: PASS
+- Nginx configuration uses the query-free `familychat_safe` access-log format; CI validates syntax with `nginx -t`
 - `npx playwright test --list`: PASS, two-user E2E discovered and transpiled
 - The E2E requires a live `accepted` → `persisted` acknowledgement before validating persistence after reload
 - The E2E requires an actively connected removed member to be evicted from the SignalR room without reloading

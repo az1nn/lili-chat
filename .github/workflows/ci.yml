@@ -62,6 +62,12 @@ jobs:
           ./scripts/check-structure.sh
           docker compose config --quiet
 
+      - name: Validate Nginx configuration
+        run: |
+          docker run --rm \
+            --volume "$PWD/src/Web/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
+            nginx:1.27-alpine nginx -t
+
       - name: Validate Prometheus configuration and alerts
         run: |
           docker run --rm --entrypoint promtool \

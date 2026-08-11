@@ -63,6 +63,8 @@ Enquanto uploads não são suportados, o Gateway limita corpos HTTP a 64 KiB. Ao
 
 No container, o Web encaminha `/api` e `/hubs` ao Gateway pelo Nginx, mantendo cookies e WebSocket same-origin. `http://localhost:5000` permanece exposto para desenvolvimento e diagnóstico.
 
+O access log do Nginx usa apenas `$uri`, sem query string. Isso é obrigatório porque o transporte WebSocket/SSE do SignalR pode enviar o JWT como `access_token` na query; nunca troque o formato seguro por `$request`, `$request_uri`, `$args` ou `$query_string`.
+
 ### JWT em produção
 
 Produção exige RSA: somente Identity recebe `JWT_PRIVATE_KEY_BASE64`; os demais serviços recebem `JWT_PUBLIC_KEY_BASE64`. Gere e armazene as chaves no secret manager, por exemplo:
