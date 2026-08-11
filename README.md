@@ -26,7 +26,7 @@ O repositório fixa o CLI do EF Core em `.config/dotnet-tools.json`. Para criar 
 ```bash
 dotnet tool restore
 dotnet ef migrations add AddExample --project src/Services/Room/Room.API.csproj
-dotnet ef migrations has-pending-model-changes --project src/Services/Room/Room.API.csproj
+./scripts/check-migrations.sh
 ```
 
 Revise o SQL gerado e mantenha a migration e o `ModelSnapshot` no mesmo commit da mudança de modelo.

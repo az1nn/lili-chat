@@ -25,6 +25,11 @@ jobs:
       - name: Build backend
         run: dotnet build FamilyChat.sln --configuration Release --no-restore
 
+      - name: Validate migration models
+        run: |
+          dotnet tool restore
+          ./scripts/check-migrations.sh
+
       - name: Test backend
         run: dotnet test FamilyChat.sln --configuration Release --no-build
         env:

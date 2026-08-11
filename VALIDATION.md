@@ -8,7 +8,7 @@ Checks executed locally and in GitHub Actions through 2026-08-11:
 - All .NET runtime Dockerfiles select the built-in non-root `app` user; the structure gate enforces this
 - `dotnet restore FamilyChat.sln`: PASS (NuGet audit disabled locally due feed latency)
 - `dotnet tool restore`: PASS; repository-pinned `dotnet-ef` 8.0.11 restored
-- `dotnet ef migrations has-pending-model-changes`: PASS for Identity, Family Graph, Room, Message, and Notification
+- `./scripts/check-migrations.sh`: PASS for Identity, Family Graph, Room, Message, and Notification using dedicated design-time factories; CI rejects unversioned model drift
 - `dotnet build FamilyChat.sln --no-restore`: PASS, zero warnings
 - `dotnet test FamilyChat.sln --no-build --no-restore`: PASS locally, 68 contract/authorization/security/input/retry tests; Docker-backed migration test skipped locally by design
 - NuGet vulnerability audit: no known vulnerable direct or transitive packages across runtime and test projects after upgrading OpenTelemetry to 1.17.0, pinning MessagePack 2.5.302, aligning EF Core/Npgsql EF/dotnet-ef on 8.0.11, and updating xUnit to 2.9.3 with its Visual Studio runner 3.1.5
