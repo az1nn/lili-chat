@@ -35,6 +35,42 @@ public class NotificationDeliveryTests
     }
 
     [Fact]
+    public void StubProvider_IsRestrictedToTestEnvironment()
+    {
+        var production = Configuration(new()
+        {
+            ["Notifications:Provider"] = "Stub",
+            ["ASPNETCORE_ENVIRONMENT"] = "Production"
+        });
+        Assert.Throws<InvalidOperationException>(() => NotificationOptions.Load(production));
+
+        var test = Configuration(new()
+        {
+            ["Notifications:Provider"] = "Stub",
+            ["ASPNETCORE_ENVIRONMENT"] = "Test"
+        });
+        var options = NotificationOptions.Load(test);
+
+        Assert.True(options.Enabled);
+        Assert.True(options.IsStub);
+    }
+
+    [Fact]
+    public async Task StubProvider_CompletesWithoutSmtpConfiguration()
+    {
+        var options = NotificationOptions.Load(Configuration(new()
+        {
+            ["Notifications:Provider"] = "Stub",
+            ["ASPNETCORE_ENVIRONMENT"] = "Test"
+        }));
+        var sender = new SmtpNotificationSender(options);
+
+        await sender.SendAsync(new NotificationEnvelope(
+            Guid.NewGuid(), "recipient@example.test", "Família", "segredo"),
+            CancellationToken.None);
+    }
+
+    [Fact]
     public void RecipientSelection_ExcludesSenderInvalidEmailsAndDuplicates()
     {
         var sender = Guid.NewGuid();
