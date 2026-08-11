@@ -134,6 +134,9 @@ static class NotificationStatuses
 {
     public const string Queued = "queued";
     public const string ResolvingTargets = "resolving-targets";
+    public const string ResolvingRoom = "resolving-room";
+    public const string ResolvingContacts = "resolving-contacts";
+    public const string CreatingDeliveries = "creating-deliveries";
     public const string Sending = "sending";
     public const string Delivered = "delivered";
     public const string Failed = "failed";

@@ -264,6 +264,8 @@ class MessageNotificationConsumer(
         }
         else
         {
+            audit.Status = NotificationStatuses.ResolvingRoom;
+            await db.SaveChangesAsync(ct);
             var room = await roomClient.GetRoomNotificationTargetsAsync(
                 new GetRoomNotificationTargetsRequest { RoomId = e.RoomId.ToString() },
                 deadline: DateTime.UtcNow.AddSeconds(3), cancellationToken: ct);
@@ -273,6 +275,8 @@ class MessageNotificationConsumer(
         }
 
         if (targetUserIds.Count == 0) return;
+        audit.Status = NotificationStatuses.ResolvingContacts;
+        await db.SaveChangesAsync(ct);
         var targetIds = targetUserIds
             .Select(value => Guid.TryParse(value, out var id) ? id : Guid.Empty)
             .Where(id => id != Guid.Empty && id != e.SenderId)
@@ -289,6 +293,8 @@ class MessageNotificationConsumer(
             throw new InvalidOperationException(
                 $"Notification contacts are not projected for {missingIds.Length} recipient(s).");
 
+        audit.Status = NotificationStatuses.CreatingDeliveries;
+        await db.SaveChangesAsync(ct);
         foreach (var recipient in NotificationRecipients.Valid(recipients, e.SenderId))
         {
             audit.Deliveries.Add(new NotificationDelivery
