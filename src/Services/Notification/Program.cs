@@ -159,6 +159,7 @@ class MessageNotificationConsumer(
             }
             catch (OperationCanceledException ex) when (!context.CancellationToken.IsCancellationRequested)
             {
+                DiscardPendingDeliveries(audit);
                 audit.Status = NotificationStatuses.TargetResolutionFailed;
                 audit.LastError = NotificationFailure.SafeMessage(
                     new TimeoutException("Notification target resolution exceeded 10 seconds.", ex));
@@ -168,6 +169,7 @@ class MessageNotificationConsumer(
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                DiscardPendingDeliveries(audit);
                 audit.Status = NotificationStatuses.TargetResolutionFailed;
                 audit.LastError = NotificationFailure.SafeMessage(ex);
                 FamilyChatMetrics.NotificationFailed.Add(1);
@@ -304,6 +306,20 @@ class MessageNotificationConsumer(
             });
         }
         await db.SaveChangesAsync(ct);
+    }
+
+    void DiscardPendingDeliveries(NotificationAudit audit)
+    {
+        var pendingDeliveries = db.ChangeTracker.Entries<NotificationDelivery>()
+            .Where(entry => entry.State == EntityState.Added && entry.Entity.AuditId == audit.Id)
+            .Select(entry => entry.Entity)
+            .ToArray();
+
+        foreach (var delivery in pendingDeliveries)
+        {
+            audit.Deliveries.Remove(delivery);
+            db.Entry(delivery).State = EntityState.Detached;
+        }
     }
 }
 
