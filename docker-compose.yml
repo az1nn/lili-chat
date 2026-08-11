@@ -1,0 +1,309 @@
+name: familychat
+
+networks:
+  frontend:
+  backend:
+  data:
+
+volumes:
+  pg-identity:
+  pg-family:
+  pg-room:
+  pg-message:
+  pg-notification:
+  rabbit-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:
+
+x-service-env: &service-env
+  ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+  ASPNETCORE_URLS: http://+:8080
+  JWT__Issuer: ${JWT_ISSUER}
+  JWT__Audience: ${JWT_AUDIENCE}
+  JWT__PublicKeyBase64: ${JWT_PUBLIC_KEY_BASE64:-}
+  RabbitMQ__Host: rabbitmq
+  RabbitMQ__User: ${RABBIT_USER}
+  RabbitMQ__Pass: ${RABBIT_PASS}
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+  OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+
+x-dotnet-health: &dotnet-health
+  test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/health"]
+  interval: 5s
+  timeout: 3s
+  retries: 30
+  start_period: 10s
+
+services:
+  postgres-identity:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: identity
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${DB_PASS}
+    volumes: [pg-identity:/var/lib/postgresql/data]
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d identity"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  postgres-family:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: familygraph
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${DB_PASS}
+    volumes: [pg-family:/var/lib/postgresql/data]
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d familygraph"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  postgres-room:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: room
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${DB_PASS}
+    volumes: [pg-room:/var/lib/postgresql/data]
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d room"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  postgres-message:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: message
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${DB_PASS}
+    volumes: [pg-message:/var/lib/postgresql/data]
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d message"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  postgres-notification:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: notification
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${DB_PASS}
+    volumes: [pg-notification:/var/lib/postgresql/data]
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d notification"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASS}
+    volumes: [rabbit-data:/var/lib/rabbitmq]
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes: [redis-data:/data]
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  identity-svc:
+    build:
+      context: ./src
+      dockerfile: Services/Identity/Dockerfile
+    environment:
+      <<: *service-env
+      JWT__Secret: ${JWT_SECRET:-}
+      JWT__PrivateKeyBase64: ${JWT_PRIVATE_KEY_BASE64:-}
+      ConnectionStrings__Default: Host=postgres-identity;Database=identity;Username=app;Password=${DB_PASS}
+    depends_on:
+      postgres-identity: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    healthcheck: *dotnet-health
+    networks: [backend, data]
+
+  family-svc:
+    build:
+      context: ./src
+      dockerfile: Services/FamilyGraph/Dockerfile
+    environment:
+      <<: *service-env
+      JWT__Secret: ${JWT_SECRET:-}
+      InternalAuth__Token: ${INTERNAL_FAMILY_TOKEN}
+      ConnectionStrings__Default: Host=postgres-family;Database=familygraph;Username=app;Password=${DB_PASS}
+    depends_on:
+      postgres-family: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    healthcheck: *dotnet-health
+    networks: [backend, data]
+
+  room-svc:
+    build:
+      context: ./src
+      dockerfile: Services/Room/Dockerfile
+    environment:
+      <<: *service-env
+      JWT__Secret: ${JWT_SECRET:-}
+      InternalAuth__Token: ${INTERNAL_ROOM_TOKEN}
+      InternalAuth__FamilyToken: ${INTERNAL_FAMILY_TOKEN}
+      ConnectionStrings__Default: Host=postgres-room;Database=room;Username=app;Password=${DB_PASS}
+      Services__FamilyGraph: http://family-svc:8081
+    depends_on:
+      postgres-room: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      family-svc: { condition: service_healthy }
+    healthcheck: *dotnet-health
+    networks: [backend, data]
+
+  message-svc:
+    build:
+      context: ./src
+      dockerfile: Services/Message/Dockerfile
+    environment:
+      <<: *service-env
+      JWT__Secret: ${JWT_SECRET:-}
+      InternalAuth__RoomToken: ${INTERNAL_ROOM_TOKEN}
+      ConnectionStrings__Default: Host=postgres-message;Database=message;Username=app;Password=${DB_PASS}
+      Services__Room: http://room-svc:8081
+    depends_on:
+      postgres-message: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      room-svc: { condition: service_healthy }
+    healthcheck: *dotnet-health
+    networks: [backend, data]
+
+  realtime-hub:
+    build:
+      context: ./src
+      dockerfile: Services/RealtimeHub/Dockerfile
+    environment:
+      <<: *service-env
+      JWT__Secret: ${JWT_SECRET:-}
+      InternalAuth__RoomToken: ${INTERNAL_ROOM_TOKEN}
+      Redis__Connection: redis:6379
+      Services__Room: http://room-svc:8081
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      room-svc: { condition: service_healthy }
+    healthcheck: *dotnet-health
+    networks: [backend]
+
+  notification-svc:
+    build:
+      context: ./src
+      dockerfile: Services/Notification/Dockerfile
+    environment:
+      <<: *service-env
+      ConnectionStrings__Default: Host=postgres-notification;Database=notification;Username=app;Password=${DB_PASS}
+    depends_on:
+      postgres-notification: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    healthcheck: *dotnet-health
+    networks: [backend, data]
+
+  gateway:
+    build:
+      context: ./src
+      dockerfile: Gateway/Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      <<: *service-env
+    depends_on:
+      identity-svc: { condition: service_healthy }
+      family-svc: { condition: service_healthy }
+      room-svc: { condition: service_healthy }
+      message-svc: { condition: service_healthy }
+      realtime-hub: { condition: service_healthy }
+    healthcheck: *dotnet-health
+    networks: [frontend, backend]
+
+  web:
+    build:
+      context: ./src/Web
+      args:
+        VITE_API_URL: ""
+    ports:
+      - "3000:80"
+    depends_on:
+      gateway: { condition: service_healthy }
+    networks: [frontend]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.106.1
+    command: ["--config=/etc/otelcol-contrib/config.yml"]
+    volumes:
+      - ./deploy/otel-collector/config.yml:/etc/otelcol-contrib/config.yml:ro
+    ports:
+      - "4317:4317"
+      - "8889:8889"
+    networks: [backend]
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+    networks: [backend]
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks: [backend]
+
+  grafana:
+    image: grafana/grafana:11.1.4
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASS}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3001:3000"
+    depends_on: [prometheus]
+    networks: [backend]
+
+  k6:
+    image: grafana/k6:0.53.0
+    profiles: ["test"]
+    environment:
+      VUS: ${VUS:-1}
+      ITERATIONS: ${ITERATIONS:-1}
+    volumes:
+      - ./deploy/k6:/scripts:ro
+    command: ["run", "/scripts/smoke.js"]
+    networks: [frontend]
+    depends_on:
+      gateway: { condition: service_healthy }

@@ -1,0 +1,89 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Message throughput",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        { "refId": "A", "legendFormat": "published/s", "expr": "sum(rate({__name__=~\"message_publish.*\"}[5m]))" },
+        { "refId": "B", "legendFormat": "persisted/s", "expr": "sum(rate({__name__=~\"message_persisted.*\"}[5m]))" },
+        { "refId": "C", "legendFormat": "persist failures/s", "expr": "sum(rate({__name__=~\"message_persist_failed.*\"}[5m]))" }
+      ],
+      "gridPos": { "h": 9, "w": 16, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "Published minus persisted",
+      "description": "A growing value indicates consumer lag or persistence failures.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum({__name__=~\"message_publish.*_total\"}) - sum({__name__=~\"message_persisted.*_total\"})"
+        }
+      ],
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 0 }
+    },
+    {
+      "id": 3,
+      "title": "HTTP request rate by service and status",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "{{service_name}} {{http_response_status_code}}",
+          "expr": "sum by (service_name, http_response_status_code) (rate(http_server_request_duration_seconds_count[5m]))"
+        }
+      ],
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 9 }
+    },
+    {
+      "id": 4,
+      "title": "Authentication security events",
+      "description": "Unexpected spikes can indicate brute force or stolen refresh-token reuse.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        { "refId": "A", "legendFormat": "failed login/s", "expr": "sum(rate({__name__=~\"auth_login_failed.*\"}[5m]))" },
+        { "refId": "B", "legendFormat": "lockouts/s", "expr": "sum(rate({__name__=~\"auth_account_locked.*\"}[5m]))" },
+        { "refId": "C", "legendFormat": "refresh replay/s", "expr": "sum(rate({__name__=~\"auth_refresh_replay_detected.*\"}[5m]))" }
+      ],
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 18 }
+    },
+    {
+      "id": 5,
+      "title": "Outbox failures",
+      "description": "Stalled events crossed 20 failures but continue retrying with capped exponential backoff.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        { "refId": "A", "legendFormat": "{{service}} {{event_type}} failures/s", "expr": "sum by (service, event_type) (rate({__name__=~\"outbox_publish_failed.*\"}[5m]))" },
+        { "refId": "B", "legendFormat": "{{service}} {{event_type}} stalled", "expr": "sum by (service, event_type) ({__name__=~\"outbox_stalled.*_total\"})" }
+      ],
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 27 }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["family-chat", "otel"],
+  "templating": {
+    "list": [
+      {
+        "name": "DS_PROMETHEUS",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": { "text": "Prometheus", "value": "Prometheus" }
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Family Chat Overview",
+  "uid": "family-chat-overview",
+  "version": 1
+}

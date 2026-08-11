@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: Family Chat
+    orgId: 1
+    folder: Family Chat
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards
