@@ -56,7 +56,7 @@ button:disabled { opacity: .5; cursor: default; }
 .message { align-self: flex-start; max-width: min(70%, 620px); background: #19223c; padding: 10px 13px; border-radius: 14px 14px 14px 4px; }
 .message.mine { align-self: flex-end; background: #5966e8; border-radius: 14px 14px 4px 14px; }
 .message small { display: block; opacity: .65; margin-top: 5px; font-size: 10px; text-align: right; }
-.load-older { align-self: center; padding: 7px 12px; font-size: 12px; }
+.history-loading { align-self: center; padding: 7px 12px; font-size: 12px; }
 .retry { padding: 0 0 0 6px; background: transparent; color: inherit; font-size: inherit; text-decoration: underline; }
 .empty { margin: auto; color: #7781a1; }
 .composer { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 16px 20px; border-top: 1px solid #202943; }

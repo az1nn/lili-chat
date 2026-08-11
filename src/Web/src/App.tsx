@@ -1,6 +1,7 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api'
 import { useAuth } from './AuthContext'
+import { oldestPersistedCursor, prependHistory } from './history'
 import { useChat } from './useChat'
 import type { Room, Message, RoomMember, UserProfile } from './types'
 import './styles.css'
@@ -55,12 +56,18 @@ function ChatPanel({ room, token, me, onRoomChanged, onRoomClosed }: {
   const [error, setError] = useState('')
   const [hasOlder, setHasOlder] = useState(false)
   const [loadingOlder, setLoadingOlder] = useState(false)
+  const loadingOlderRef = useRef(false)
+  const messagesRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     api<Message[]>(`/api/v1/messages/room/${room.id}?take=50`, {}, token)
       .then(rows => {
         chat.setMessages(rows.map(m => ({ ...m, status: 'persisted' })))
         setHasOlder(rows.length === 50)
+        requestAnimationFrame(() => {
+          const viewport = messagesRef.current
+          if (viewport) viewport.scrollTop = viewport.scrollHeight
+        })
       })
       .catch(e => setError(e.message))
     api<RoomMember[]>(`/api/v1/rooms/${room.id}/members`, {}, token)
@@ -68,28 +75,42 @@ function ChatPanel({ room, token, me, onRoomChanged, onRoomClosed }: {
       .catch(() => undefined)
   }, [room.id, token])
 
-  async function loadOlder() {
-    const oldest = chat.messages.find(m => !m.id.startsWith('pending-'))
-    if (!oldest) return
+  const loadOlder = useCallback(async () => {
+    const cursor = oldestPersistedCursor(chat.messages)
+    if (!cursor || !hasOlder || loadingOlderRef.current) return
+    const viewport = messagesRef.current
+    const previousHeight = viewport?.scrollHeight ?? 0
+    const previousTop = viewport?.scrollTop ?? 0
     try {
+      loadingOlderRef.current = true
       setLoadingOlder(true)
       const query = new URLSearchParams({
         take: '50',
-        beforeSentAt: oldest.sentAt,
-        beforeId: oldest.id,
+        beforeSentAt: cursor.beforeSentAt,
+        beforeId: cursor.beforeId,
       })
       const rows = await api<Message[]>(`/api/v1/messages/room/${room.id}?${query}`, {}, token)
-      chat.setMessages(current => [
-        ...rows.map(m => ({ ...m, status: 'persisted' as const })),
-        ...current.filter(m => !rows.some(old => old.id === m.id)),
-      ])
+      chat.setMessages(current => prependHistory(current, rows))
       setHasOlder(rows.length === 50)
+      requestAnimationFrame(() => {
+        const currentViewport = messagesRef.current
+        if (currentViewport) {
+          currentViewport.scrollTop = previousTop + currentViewport.scrollHeight - previousHeight
+        }
+      })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Falha ao carregar histórico')
     } finally {
+      loadingOlderRef.current = false
       setLoadingOlder(false)
     }
-  }
+  }, [chat.messages, chat.setMessages, hasOlder, room.id, token])
+
+  useEffect(() => {
+    const viewport = messagesRef.current
+    if (!viewport || !hasOlder || loadingOlder) return
+    if (viewport.scrollHeight <= viewport.clientHeight) void loadOlder()
+  }, [chat.messages.length, hasOlder, loadingOlder, loadOlder])
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -182,10 +203,11 @@ function ChatPanel({ room, token, me, onRoomChanged, onRoomClosed }: {
 
     {error && <div className="error inline">{error}</div>}
 
-    <div className="messages">
-      {hasOlder && <button className="ghost load-older" onClick={loadOlder} disabled={loadingOlder}>
-        {loadingOlder ? 'Carregando...' : 'Carregar mensagens anteriores'}
-      </button>}
+    <div className="messages" ref={messagesRef}
+      onScroll={event => {
+        if (event.currentTarget.scrollTop <= 80) void loadOlder()
+      }}>
+      {loadingOlder && <div className="muted history-loading">Carregando mensagens anteriores...</div>}
       {chat.messages.map(m => <div key={m.id} className={`message ${m.senderId === me ? 'mine' : ''}`}>
         <div>{m.content}</div>
         <small>

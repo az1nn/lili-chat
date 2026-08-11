@@ -14,7 +14,7 @@ Checks executed locally and in GitHub Actions through 2026-08-11:
 - NuGet vulnerability audit: no known vulnerable direct or transitive packages across runtime and test projects after upgrading OpenTelemetry to 1.17.0, pinning MessagePack 2.5.302, aligning EF Core/Npgsql EF/dotnet-ef on 8.0.11, and updating xUnit to 2.9.3 with its Visual Studio runner 3.1.5
 - `npm ci`: PASS
 - `npm run typecheck`: PASS
-- `npm test`: PASS, 3 React/API authentication tests across 2 files
+- `npm test`: PASS, 5 React/API/history tests across 3 files
 - `npm run build`: PASS
 - `npx playwright test --list`: PASS, two-user E2E discovered and transpiled
 - The E2E requires a live `accepted` → `persisted` acknowledgement before validating persistence after reload
