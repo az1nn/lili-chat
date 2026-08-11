@@ -64,9 +64,15 @@ jobs:
 
       - name: Validate Nginx configuration
         run: |
-          docker run --rm --entrypoint nginx \
+          if ! output=$(docker run --rm --entrypoint nginx \
             --volume "$PWD/src/Web/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
-            nginx:1.27-alpine -t
+            nginx:1.27-alpine -t 2>&1); then
+            echo "$output"
+            message=$(echo "$output" | tail -n 1 | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')
+            echo "::error title=Nginx configuration invalid::$message"
+            exit 1
+          fi
+          echo "$output"
 
       - name: Validate Prometheus configuration and alerts
         run: |
