@@ -5,9 +5,9 @@ c02d5b1bb9b562356d1f5bcc329c231f3996b7b6a2c5fcc6d381e30456fa2365  ./.github/work
 bbadc572275abfb0fa1e35d0dca9023133788362614a974387232c5ee7848a08  ./.gitignore
 e74389ff86d8ee6d24eb4c0d76aac9bbb0d0457d3d3f333f00489cfc50aa6111  ./AGENTS.md
 2a72db08877e6544054a931132146bef59c4a181eaa66aa16ebf4a6ccbedaf01  ./FamilyChat.sln
-0c2218743cc782734891653bb72c1bcb17d320dd5bc08fca1606776c0fcb8eeb  ./README.md
-b4c278278db5062067d666ecf748fe4401d7b393fc2520c68f74af3652ee99b7  ./VALIDATION.md
-b2018dd1a23d14d77d5c81e983c8323d95e3da98006e702dab9d763fd6b63048  ./deploy/grafana/provisioning/dashboards/family-chat.json
+c759f3a14e21af3c493d97ef78ba990be6dc5082fba898a7cf4d15f7f38a8828  ./README.md
+0ebc6db4f3931a13131dd25a941821e156c5ffd6f92fa1856751c99eb205b8e2  ./VALIDATION.md
+02d5f113b367836c4d8000946c3f71ce42830bdec13708ad1387551c836e561a  ./deploy/grafana/provisioning/dashboards/family-chat.json
 802c7ce9fbfe5fac986d57b3f4fce0ae6470b5a3151bcf5cce6065eea45ce347  ./deploy/grafana/provisioning/dashboards/provider.yml
 20d45a357cc7ae559b60b0c17b49f714a24266bd0a92f26b89070d3e14c1a80e  ./deploy/grafana/provisioning/datasources/datasource.yml
 0621b5e7347fa065ed8c8b6d1363f29f2c8c524d564c05a0c028202c1d003e47  ./deploy/k6/smoke.js
@@ -45,7 +45,7 @@ e4bf6e6716a7713a416b4faec450844c2833d0ee6580e5adc9114f50dd273fe7  ./src/Services
 fb3ea1129b69b215e9b347a115d9e2ad324862d5a4ba9c696ef77dc30e5ab675  ./src/Services/Notification/Program.cs
 db746987ef31207b911da6db5c30b2ec33da99453df8848b44d32b4f39633c4c  ./src/Services/Notification/Properties/AssemblyInfo.cs
 55bcdb2038e814dd8bf06aa910a774b1e66d994c0497cb897f9162d36eb8729b  ./src/Services/RealtimeHub/Dockerfile
-1d2bcbbdf6c622d418563a1d285cfd2e82f07a30c7ac061929a2a30f956c73de  ./src/Services/RealtimeHub/Program.cs
+120c9e2afc77e31419c20445356035a2927d663fe3e657ab4eae191e96632266  ./src/Services/RealtimeHub/Program.cs
 01d64103a920e13ce6f0b08ee905ff0d1e9a130126986c116db47149a6bf09f0  ./src/Services/RealtimeHub/RealtimeHub.API.csproj
 e8b93960f6ec7bcd757b5906aecdfc0df46176bd1859ada7ffe22dd8b8540173  ./src/Services/Room/Dockerfile
 6795aa0423e10613b3f6ddd8d6325cf80c6c3bfc77ecaac7a0e43cd226f322bd  ./src/Services/Room/Migrations/202608100001_InitialCreate.cs
@@ -58,7 +58,7 @@ b669c18383075a3ffb2daf12d5daf0fbdcc11cdf0bb9db5a28d5b04485efafce  ./src/Services
 a6cb74317b023f2f21793487781642d20730b8e36a78a990475a31884dc6bdcb  ./src/Shared/FamilyChat.Contracts/Protos/family.proto
 3723b58b771ddbf369a290533ead157dd33ef3f00ded9a13cc68e418aaf83b3e  ./src/Shared/FamilyChat.Contracts/Protos/room.proto
 8211a29b8d4ae8329896a0f47ac10c7f1104925e2bec248399660f78fb62a86c  ./src/Shared/FamilyChat.ServiceDefaults/FamilyChat.ServiceDefaults.csproj
-d7525b162577a5c7ad50c4b6862dc77234aa8edc26e6ec2ea4a1f2601d60e636  ./src/Shared/FamilyChat.ServiceDefaults/ServiceDefaults.cs
+1ede41ad00df9225d5bd86441736c7fc1f6cb7ae0dab803b54eb8dfca6500b09  ./src/Shared/FamilyChat.ServiceDefaults/ServiceDefaults.cs
 2da5c34400c496c1384b78b1df823f3af92d103906bcab53df226c173eba5f0c  ./src/Web/Dockerfile
 b264f53eef4835124129c985e740eca7c0e1ff44e5793da81e0ed2d6ca4db137  ./src/Web/index.html
 987b233dd8521d322810d4d495b2149a0358fcebf3ada73df43fbb8c629f2277  ./src/Web/nginx.conf

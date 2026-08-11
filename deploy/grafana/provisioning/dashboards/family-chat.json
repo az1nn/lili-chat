@@ -67,6 +67,28 @@
         { "refId": "B", "legendFormat": "{{service}} {{event_type}} stalled", "expr": "sum by (service, event_type) ({__name__=~\"outbox_stalled.*_total\"})" }
       ],
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 27 }
+    },
+    {
+      "id": 6,
+      "title": "SignalR active connections",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        { "refId": "A", "expr": "sum({__name__=~\"signalr_active_connections.*\"})" }
+      ],
+      "gridPos": { "h": 9, "w": 8, "x": 0, "y": 36 }
+    },
+    {
+      "id": 7,
+      "title": "Realtime dependency failures",
+      "description": "Redis or room-authorization failures make join and send fail closed.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        { "refId": "A", "legendFormat": "redis {{operation}}", "expr": "sum by (operation) (rate({__name__=~\"redis_failures.*\"}[5m]))" },
+        { "refId": "B", "legendFormat": "grpc {{operation}} {{status}}", "expr": "sum by (operation, status) (rate({__name__=~\"grpc_failures.*\"}[5m]))" }
+      ],
+      "gridPos": { "h": 9, "w": 16, "x": 8, "y": 36 }
     }
   ],
   "refresh": "10s",

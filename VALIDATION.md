@@ -19,7 +19,7 @@ Checks executed in the development environment on 2026-08-10:
 - The E2E requires a live `accepted` → `persisted` acknowledgement before validating persistence after reload
 - The E2E requires an actively connected removed member to be evicted from the SignalR room without reloading
 - `node --check deploy/k6/smoke.js`: PASS; the smoke gate measures register, login, room creation, and authorized history independently
-- Grafana dashboard JSON parse: PASS; message consistency and authentication-security panels are provisioned
+- Grafana dashboard JSON parse: PASS; message consistency, authentication-security, SignalR connection, and realtime dependency panels are provisioned
 - Internal gRPC calls use three-second deadlines and controlled unavailable responses
 
 Runtime checks still required:

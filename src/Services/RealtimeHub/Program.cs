@@ -98,6 +98,13 @@ class ChatHub(
 
     Guid UserId => Guid.Parse(UserIdString);
 
+    public override async Task OnConnectedAsync()
+    {
+        await base.OnConnectedAsync();
+        FamilyChatMetrics.SignalRConnections.Add(1);
+        FamilyChatMetrics.SignalRActiveConnections.Add(1);
+    }
+
     public async Task<object> JoinRoom(Guid roomId)
     {
         IsMemberResponse permission;
@@ -112,44 +119,62 @@ class ChatHub(
         }
         catch (RpcException ex) when (ex.StatusCode is StatusCode.Unavailable or StatusCode.DeadlineExceeded)
         {
+            RecordGrpcFailure("join_room", ex.StatusCode);
             return new { success = false, error = "Autorização de sala indisponível." };
         }
 
         if (!permission.IsMember)
             return new { success = false, error = "Sem permissão para esta sala." };
 
-        await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
-        var db = redis.GetDatabase();
-        var presenceKey = $"familychat:room:{roomId}:connections";
-        await db.HashSetAsync(presenceKey, Context.ConnectionId, UserIdString);
+        try
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, roomId.ToString());
+            var db = redis.GetDatabase();
+            var presenceKey = $"familychat:room:{roomId}:connections";
+            await db.HashSetAsync(presenceKey, Context.ConnectionId, UserIdString);
 
-        var rooms = Context.Items.TryGetValue("rooms", out var current)
-            ? (HashSet<Guid>)current!
-            : new HashSet<Guid>();
-        rooms.Add(roomId);
-        Context.Items["rooms"] = rooms;
+            var rooms = Context.Items.TryGetValue("rooms", out var current)
+                ? (HashSet<Guid>)current!
+                : new HashSet<Guid>();
+            rooms.Add(roomId);
+            Context.Items["rooms"] = rooms;
 
-        var online = (await db.HashValuesAsync(presenceKey))
-            .Select(v => v.ToString()).Distinct().ToArray();
+            var online = (await db.HashValuesAsync(presenceKey))
+                .Select(v => v.ToString()).Distinct().ToArray();
 
-        await Clients.Group(roomId.ToString()).SendAsync(
-            "PresenceUpdated", new { roomId, onlineUsers = online });
+            await Clients.Group(roomId.ToString()).SendAsync(
+                "PresenceUpdated", new { roomId, onlineUsers = online });
 
-        return new { success = true, data = new { role = permission.Role, onlineUsers = online } };
+            return new { success = true, data = new { role = permission.Role, onlineUsers = online } };
+        }
+        catch (RedisException ex)
+        {
+            RecordRedisFailure("join_room", ex);
+            Context.Abort();
+            return new { success = false, error = "Realtime temporariamente indisponível." };
+        }
     }
 
     public async Task LeaveRoom(Guid roomId)
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId.ToString());
-        var db = redis.GetDatabase();
-        var presenceKey = $"familychat:room:{roomId}:connections";
-        await db.HashDeleteAsync(presenceKey, Context.ConnectionId);
-        if (Context.Items.TryGetValue("rooms", out var current))
-            ((HashSet<Guid>)current!).Remove(roomId);
-        var online = (await db.HashValuesAsync(presenceKey))
-            .Select(v => v.ToString()).Distinct().ToArray();
-        await Clients.Group(roomId.ToString()).SendAsync(
-            "PresenceUpdated", new { roomId, onlineUsers = online });
+        try
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId.ToString());
+            var db = redis.GetDatabase();
+            var presenceKey = $"familychat:room:{roomId}:connections";
+            await db.HashDeleteAsync(presenceKey, Context.ConnectionId);
+            if (Context.Items.TryGetValue("rooms", out var current))
+                ((HashSet<Guid>)current!).Remove(roomId);
+            var online = (await db.HashValuesAsync(presenceKey))
+                .Select(v => v.ToString()).Distinct().ToArray();
+            await Clients.Group(roomId.ToString()).SendAsync(
+                "PresenceUpdated", new { roomId, onlineUsers = online });
+        }
+        catch (RedisException ex)
+        {
+            RecordRedisFailure("leave_room", ex);
+            Context.Abort();
+        }
     }
 
     public async Task<object> SendMessage(Guid roomId, string content, Guid? clientMessageId = null)
@@ -161,12 +186,20 @@ class ChatHub(
             return new { success = false, error = "Mensagem deve ter entre 1 e 2000 caracteres." };
 
         var redisDb = redis.GetDatabase();
-        var bucket = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 10;
-        var rateKey = $"familychat:ratelimit:send:{UserId}:{roomId}:{bucket}";
-        var count = await redisDb.StringIncrementAsync(rateKey);
-        if (count == 1) await redisDb.KeyExpireAsync(rateKey, TimeSpan.FromSeconds(15));
-        if (count > 20)
-            return new { success = false, error = "Muitas mensagens. Aguarde alguns segundos." };
+        try
+        {
+            var bucket = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 10;
+            var rateKey = $"familychat:ratelimit:send:{UserId}:{roomId}:{bucket}";
+            var count = await redisDb.StringIncrementAsync(rateKey);
+            if (count == 1) await redisDb.KeyExpireAsync(rateKey, TimeSpan.FromSeconds(15));
+            if (count > 20)
+                return new { success = false, error = "Muitas mensagens. Aguarde alguns segundos." };
+        }
+        catch (RedisException ex)
+        {
+            RecordRedisFailure("send_rate_limit", ex);
+            return new { success = false, error = "Realtime temporariamente indisponível." };
+        }
 
         IsMemberResponse permission;
         try
@@ -180,6 +213,7 @@ class ChatHub(
         }
         catch (RpcException ex) when (ex.StatusCode is StatusCode.Unavailable or StatusCode.DeadlineExceeded)
         {
+            RecordGrpcFailure("send_message", ex.StatusCode);
             return new { success = false, error = "Autorização de sala indisponível." };
         }
 
@@ -192,12 +226,20 @@ class ChatHub(
         if (clientMessageId is not null)
         {
             idempotencyKey = $"familychat:message-client:{UserId}:{clientMessageId}";
-            var reserved = await redisDb.StringSetAsync(
-                idempotencyKey.Value, messageId.ToString(), TimeSpan.FromDays(1), When.NotExists);
-            if (!reserved)
+            try
             {
-                var existing = await redisDb.StringGetAsync(idempotencyKey.Value);
-                return new { success = true, data = new { messageId = existing.ToString(), duplicate = true } };
+                var reserved = await redisDb.StringSetAsync(
+                    idempotencyKey.Value, messageId.ToString(), TimeSpan.FromDays(1), When.NotExists);
+                if (!reserved)
+                {
+                    var existing = await redisDb.StringGetAsync(idempotencyKey.Value);
+                    return new { success = true, data = new { messageId = existing.ToString(), duplicate = true } };
+                }
+            }
+            catch (RedisException ex)
+            {
+                RecordRedisFailure("send_idempotency", ex);
+                return new { success = false, error = "Realtime temporariamente indisponível." };
             }
         }
 
@@ -210,7 +252,11 @@ class ChatHub(
         }
         catch
         {
-            if (idempotencyKey is not null) await redisDb.KeyDeleteAsync(idempotencyKey.Value);
+            if (idempotencyKey is not null)
+            {
+                try { await redisDb.KeyDeleteAsync(idempotencyKey.Value); }
+                catch (RedisException ex) { RecordRedisFailure("send_rollback", ex); }
+            }
             throw;
         }
 
@@ -231,21 +277,47 @@ class ChatHub(
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        if (Context.Items.TryGetValue("rooms", out var current))
+        try
         {
-            var db = redis.GetDatabase();
-            foreach (var roomId in (HashSet<Guid>)current!)
+            if (Context.Items.TryGetValue("rooms", out var current))
             {
-                var presenceKey = $"familychat:room:{roomId}:connections";
-                await db.HashDeleteAsync(presenceKey, Context.ConnectionId);
-                var online = (await db.HashValuesAsync(presenceKey))
-                    .Select(v => v.ToString()).Distinct().ToArray();
-                await Clients.Group(roomId.ToString()).SendAsync(
-                    "PresenceUpdated", new { roomId, onlineUsers = online });
+                var db = redis.GetDatabase();
+                foreach (var roomId in (HashSet<Guid>)current!)
+                {
+                    var presenceKey = $"familychat:room:{roomId}:connections";
+                    await db.HashDeleteAsync(presenceKey, Context.ConnectionId);
+                    var online = (await db.HashValuesAsync(presenceKey))
+                        .Select(v => v.ToString()).Distinct().ToArray();
+                    await Clients.Group(roomId.ToString()).SendAsync(
+                        "PresenceUpdated", new { roomId, onlineUsers = online });
+                }
             }
         }
-        await base.OnDisconnectedAsync(exception);
+        catch (RedisException ex)
+        {
+            RecordRedisFailure("disconnect", ex);
+        }
+        finally
+        {
+            FamilyChatMetrics.SignalRDisconnects.Add(1);
+            FamilyChatMetrics.SignalRActiveConnections.Add(-1);
+            await base.OnDisconnectedAsync(exception);
+        }
     }
+
+    void RecordRedisFailure(string operation, RedisException exception)
+    {
+        FamilyChatMetrics.RedisFailures.Add(1,
+            new KeyValuePair<string, object?>("service", "realtime"),
+            new KeyValuePair<string, object?>("operation", operation));
+        logger.LogWarning(exception, "Redis unavailable during {Operation}", operation);
+    }
+
+    static void RecordGrpcFailure(string operation, StatusCode statusCode) =>
+        FamilyChatMetrics.GrpcFailures.Add(1,
+            new KeyValuePair<string, object?>("service", "realtime"),
+            new KeyValuePair<string, object?>("operation", operation),
+            new KeyValuePair<string, object?>("status", statusCode.ToString()));
 }
 
 class MessagePersistedConsumer(IHubContext<ChatHub> hub) : IConsumer<MessagePersistedEvent>

@@ -109,6 +109,16 @@ public static class FamilyChatMetrics
         Meter.CreateCounter<long>("outbox_publish_failed", unit: "attempts");
     public static readonly Counter<long> OutboxStalled =
         Meter.CreateCounter<long>("outbox_stalled", unit: "events");
+    public static readonly UpDownCounter<long> SignalRActiveConnections =
+        Meter.CreateUpDownCounter<long>("signalr_active_connections", unit: "connections");
+    public static readonly Counter<long> SignalRConnections =
+        Meter.CreateCounter<long>("signalr_connections", unit: "connections");
+    public static readonly Counter<long> SignalRDisconnects =
+        Meter.CreateCounter<long>("signalr_disconnects", unit: "connections");
+    public static readonly Counter<long> RedisFailures =
+        Meter.CreateCounter<long>("redis_failures", unit: "failures");
+    public static readonly Counter<long> GrpcFailures =
+        Meter.CreateCounter<long>("grpc_failures", unit: "failures");
 }
 
 public static class OutboxRetry

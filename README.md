@@ -51,7 +51,7 @@ Acesse:
 
 Credenciais RabbitMQ de desenvolvimento vêm do `.env`. Troque todos os segredos antes de qualquer deploy real.
 
-O dashboard provisionado **Family Chat Overview** compara `message_publish`, `message_persisted` e falhas. Uma diferença crescente entre publicação e persistência indica lag ou falha no consumidor. O mesmo dashboard acompanha falhas de login, lockouts e detecções de reutilização de refresh token.
+O dashboard provisionado **Family Chat Overview** compara `message_publish`, `message_persisted` e falhas. Uma diferença crescente entre publicação e persistência indica lag ou falha no consumidor. O mesmo dashboard acompanha falhas de login, lockouts, reutilização de refresh token, conexões SignalR ativas e falhas Redis/gRPC do realtime.
 
 O access token permanece somente em memória no navegador. O refresh token usa cookie `HttpOnly`; em produção ele também exige HTTPS para que o atributo `Secure` funcione.
 
