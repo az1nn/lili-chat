@@ -122,8 +122,11 @@ class MessageNotificationConsumer(
     public async Task Consume(ConsumeContext<MessageCreatedEvent> context)
     {
         var e = context.Message;
+        await using var lockConnection = new NpgsqlConnection(
+            db.Database.GetConnectionString()
+            ?? throw new InvalidOperationException("Notification database connection is not configured."));
         await using var messageLock = await PostgresAdvisoryLock.TryAcquireAsync(
-            db.Database.GetDbConnection(),
+            lockConnection,
             BitConverter.ToInt64(e.MessageId.ToByteArray()),
             context.CancellationToken)
             ?? throw new InvalidOperationException(
