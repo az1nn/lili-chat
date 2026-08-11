@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Mail;
 using FamilyChat.Contracts.Family;
+using FamilyChat.Contracts.Events;
 
 record NotificationOptions(
     bool Enabled,
@@ -98,6 +99,19 @@ static class NotificationRecipients
         .Where(user => MailAddress.TryCreate(user.Email, out _))
         .DistinctBy(user => user.UserId)
         .ToArray();
+}
+
+static class NotificationTargetSnapshot
+{
+    public static bool TryRead(
+        MessageCreatedEvent message,
+        out string roomName,
+        out IReadOnlyCollection<string> userIds)
+    {
+        roomName = message.RoomName?.Trim() ?? "";
+        userIds = message.NotificationUserIds ?? [];
+        return roomName.Length > 0 && userIds.Count > 0;
+    }
 }
 
 static class NotificationFailure

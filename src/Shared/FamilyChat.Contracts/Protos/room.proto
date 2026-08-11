@@ -17,6 +17,8 @@ message IsMemberResponse {
   bool is_member = 1;
   string role = 2;
   bool can_send_messages = 3;
+  string room_name = 4;
+  repeated string notification_user_ids = 5;
 }
 
 message GetRoomSummaryRequest { string room_id = 1; }

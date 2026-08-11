@@ -13,7 +13,9 @@ public record MessageCreatedEvent(
     Guid SenderId,
     string Content,
     DateTimeOffset SentAt,
-    Guid CorrelationId);
+    Guid CorrelationId,
+    string? RoomName = null,
+    string[]? NotificationUserIds = null);
 
 public record MessagePersistedEvent(
     Guid MessageId,

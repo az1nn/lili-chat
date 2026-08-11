@@ -628,14 +628,25 @@ class RoomGrpcService(RoomDbContext db) : RoomGrpc.RoomGrpcBase
             return new IsMemberResponse { IsMember = false, Role = "none", CanSendMessages = false };
 
         var member = await db.RoomMembers.AsNoTracking()
-            .FirstOrDefaultAsync(m => m.RoomId == roomId && m.UserId == userId &&
-                m.Room.ArchivedAt == null, context.CancellationToken);
-        return new IsMemberResponse
+            .Where(m => m.RoomId == roomId && m.UserId == userId &&
+                m.Room.ArchivedAt == null)
+            .Select(m => new
+            {
+                m.Role,
+                m.Room.Name,
+                UserIds = m.Room.Members.Select(roomMember => roomMember.UserId).ToArray()
+            })
+            .FirstOrDefaultAsync(context.CancellationToken);
+        var response = new IsMemberResponse
         {
             IsMember = member is not null,
             Role = member?.Role ?? "none",
-            CanSendMessages = member is not null && member.Role != "Muted"
+            CanSendMessages = member is not null && member.Role != "Muted",
+            RoomName = member?.Name ?? ""
         };
+        if (member is not null)
+            response.NotificationUserIds.AddRange(member.UserIds.Select(id => id.ToString()));
+        return response;
     }
 
     public override async Task<RoomSummary> GetRoomSummary(

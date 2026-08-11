@@ -1,4 +1,5 @@
 using FamilyChat.Contracts.Family;
+using FamilyChat.Contracts.Events;
 using Microsoft.Extensions.Configuration;
 using System.Net;
 using System.Net.Sockets;
@@ -97,6 +98,21 @@ public class NotificationDeliveryTests
         Assert.Contains($"X-FamilyChat-MessageId: {id}", payload);
         Assert.Contains("recipient@example.test", payload);
         Assert.DoesNotContain("segredo", payload);
+    }
+
+    [Fact]
+    public void EventSnapshot_PreservesRecipientsFromAuthorizedSendTime()
+    {
+        var recipient = Guid.NewGuid().ToString();
+        var message = new MessageCreatedEvent(
+            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "olá",
+            DateTimeOffset.UtcNow, Guid.NewGuid(), " Família ", [recipient]);
+
+        var found = NotificationTargetSnapshot.TryRead(message, out var roomName, out var users);
+
+        Assert.True(found);
+        Assert.Equal("Família", roomName);
+        Assert.Equal([recipient], users);
     }
 
     static UserInfoResponse User(Guid id, string email) => new()

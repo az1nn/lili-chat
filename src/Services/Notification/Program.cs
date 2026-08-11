@@ -217,14 +217,24 @@ class MessageNotificationConsumer(
 
     async Task CreateDeliveries(NotificationAudit audit, MessageCreatedEvent e, CancellationToken ct)
     {
-        var room = await roomClient.GetRoomNotificationTargetsAsync(
-            new GetRoomNotificationTargetsRequest { RoomId = e.RoomId.ToString() },
-            deadline: DateTime.UtcNow.AddSeconds(3), cancellationToken: ct);
-        if (!room.Found) return;
-        audit.RoomName = room.RoomName;
+        IReadOnlyCollection<string> targetUserIds;
+        if (NotificationTargetSnapshot.TryRead(e, out var snapshotRoomName, out var snapshotUserIds))
+        {
+            audit.RoomName = snapshotRoomName;
+            targetUserIds = snapshotUserIds;
+        }
+        else
+        {
+            var room = await roomClient.GetRoomNotificationTargetsAsync(
+                new GetRoomNotificationTargetsRequest { RoomId = e.RoomId.ToString() },
+                deadline: DateTime.UtcNow.AddSeconds(3), cancellationToken: ct);
+            if (!room.Found) return;
+            audit.RoomName = room.RoomName;
+            targetUserIds = room.UserIds;
+        }
 
         var request = new GetUsersByIdsRequest();
-        request.UserIds.AddRange(room.UserIds);
+        request.UserIds.AddRange(targetUserIds);
         if (request.UserIds.Count == 0) return;
         var users = await familyClient.GetUsersByIdsAsync(request,
             deadline: DateTime.UtcNow.AddSeconds(3), cancellationToken: ct);

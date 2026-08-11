@@ -252,7 +252,8 @@ class ChatHub(
         try
         {
             await publish.Publish(new MessageCreatedEvent(
-                messageId, roomId, UserId, text, now, Guid.NewGuid()),
+                messageId, roomId, UserId, text, now, Guid.NewGuid(),
+                permission.RoomName, permission.NotificationUserIds.ToArray()),
                 Context.ConnectionAborted);
             FamilyChatMetrics.MessagePublished.Add(1);
         }

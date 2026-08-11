@@ -20,7 +20,8 @@ public class ContractCompatibilityTests
     public void IsMemberResponse_PreservesAuthorizationFieldNumbers()
     {
         AssertFields(IsMemberResponse.Descriptor,
-            ("is_member", 1), ("role", 2), ("can_send_messages", 3));
+            ("is_member", 1), ("role", 2), ("can_send_messages", 3),
+            ("room_name", 4), ("notification_user_ids", 5));
     }
 
     [Fact]
@@ -80,7 +81,7 @@ public class ContractCompatibilityTests
         { new RoomMemberAddedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Member", DateTimeOffset.UtcNow), ["RoomId", "UserId", "AddedById", "Role", "OccurredAt"] },
         { new RoomMemberRemovedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "removed", DateTimeOffset.UtcNow), ["RoomId", "UserId", "RemovedById", "Reason", "OccurredAt"] },
         { new RoomMemberRoleChangedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Member", "Muted", DateTimeOffset.UtcNow), ["RoomId", "UserId", "ChangedById", "PreviousRole", "Role", "OccurredAt"] },
-        { new MessageCreatedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "olá", DateTimeOffset.UtcNow, Guid.NewGuid()), ["MessageId", "RoomId", "SenderId", "Content", "SentAt", "CorrelationId"] },
+        { new MessageCreatedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "olá", DateTimeOffset.UtcNow, Guid.NewGuid()), ["MessageId", "RoomId", "SenderId", "Content", "SentAt", "CorrelationId", "RoomName", "NotificationUserIds"] },
         { new MessagePersistedEvent(Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow, Guid.NewGuid()), ["MessageId", "RoomId", "PersistedAt", "CorrelationId"] }
     };
 
