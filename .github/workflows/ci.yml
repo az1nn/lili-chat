@@ -44,6 +44,10 @@ jobs:
         working-directory: src/Web
         run: npm run typecheck
 
+      - name: Test web components
+        working-directory: src/Web
+        run: npm test
+
       - name: Build web
         working-directory: src/Web
         run: npm run build

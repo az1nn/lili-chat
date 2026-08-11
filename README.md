@@ -99,7 +99,7 @@ A criação do `PublicId` é assíncrona: o Identity publica `UserRegisteredEven
 ```bash
 dotnet test FamilyChat.sln
 RUN_INTEGRATION_TESTS=1 dotnet test tests/Persistence.IntegrationTests # requer Docker
-cd src/Web && npm ci && npm run typecheck && npm run build
+cd src/Web && npm ci && npm run typecheck && npm test && npm run build
 npm run test:e2e # requer o Compose ativo e Chromium do Playwright
 docker compose --profile test run --rm k6
 # carga ajustável, por exemplo:

@@ -13,7 +13,7 @@ Backend code lives in `src/`: `Gateway/` is the YARP edge, `Services/` contains 
 - `./scripts/check-structure.sh` verifies required project and Docker files.
 - `dotnet build FamilyChat.sln && dotnet test FamilyChat.sln` validates the backend and contract tests.
 - `RUN_INTEGRATION_TESTS=1 dotnet test tests/Persistence.IntegrationTests` validates service migrations against disposable PostgreSQL databases; Docker is required.
-- `cd src/Web && npm ci && npm run build` installs locked dependencies and builds the web client; use `npm run dev` for Vite development.
+- `cd src/Web && npm ci && npm test && npm run build` installs locked dependencies, runs component tests, and builds the web client; use `npm run dev` for Vite development.
 
 ## Coding Style & Naming Conventions
 

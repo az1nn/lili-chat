@@ -13,6 +13,7 @@ Checks executed in the development environment on 2026-08-10:
 - `dotnet test FamilyChat.sln --no-build --no-restore`: PASS, 68 contract/authorization/security/input/retry tests; Docker-backed migration test skipped locally by design
 - `npm ci`: PASS
 - `npm run typecheck`: PASS
+- `npm test`: PASS, 3 React/API authentication tests across 2 files
 - `npm run build`: PASS
 - `npx playwright test --list`: PASS, two-user E2E discovered and transpiled
 - The E2E requires a live `accepted` → `persisted` acknowledgement before validating persistence after reload

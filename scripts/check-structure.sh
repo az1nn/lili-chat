@@ -6,6 +6,8 @@ test -f .config/dotnet-tools.json
 test -f src/Web/package.json
 test -f src/Web/package-lock.json
 test -f src/Web/playwright.config.ts
+test -f src/Web/src/App.test.tsx
+test -f src/Web/src/api.test.ts
 test -f src/Web/tests/e2e/chat-flow.spec.ts
 test -f tests/Persistence.IntegrationTests/PostgresMigrationTests.cs
 test -f tests/Identity.API.Tests/IdentityInputTests.cs
