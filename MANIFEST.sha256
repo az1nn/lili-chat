@@ -15,7 +15,7 @@ e74389ff86d8ee6d24eb4c0d76aac9bbb0d0457d3d3f333f00489cfc50aa6111  ./AGENTS.md
 7e5b7114f21094cb47947eca1beab4318a9e0409dd380c552b08dec3e389c3b5  ./deploy/prometheus/prometheus.yml
 3d0b27b1c08b28475f53ed8b8b6d81e8b1a8c7b4385a6c0e77cc4debd9dbc748  ./deploy/prometheus/rules/family-chat.yml
 0cb114d7ea3176915fb5b39166e1cc9648fbf9bb0ace3c70cb7712c014c31198  ./docker-compose.yml
-36670503dc0882005831ed4653603c11e1b937e42558a33f1484aef117fc3c4f  ./scripts/check-structure.sh
+eb00ffc243a009f0d8d31cfdae81021cb8060cde2f0e3da6c18a8c0932c3804d  ./scripts/check-structure.sh
 59fa6a64740ca44c8b8196fb6ed914f14c5194845208e4954755edb58f9d213a  ./src/.dockerignore
 b70bdc1a79fa7ccd374cebe3cbf68ec4b1d17c4017ecd5add4ba9f993084f4ae  ./src/Gateway/Dockerfile
 1d85de5e7c2469eaf849c0b6c40ae920026fca7e7f432768e1d856864be2a4a5  ./src/Gateway/Gateway.csproj
