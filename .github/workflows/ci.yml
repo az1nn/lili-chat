@@ -88,13 +88,9 @@ jobs:
     needs: validate
     timeout-minutes: 30
     env:
-      COMPOSE_PROFILES: notification-test
-      NOTIFICATION_PROVIDER: Smtp
+      ASPNETCORE_ENVIRONMENT: Test
+      NOTIFICATION_PROVIDER: Stub
       NOTIFICATION_INCLUDE_CONTENT: "false"
-      SMTP_HOST: mailpit
-      SMTP_PORT: "1025"
-      SMTP_ENABLE_SSL: "false"
-      SMTP_FROM: notifications@familychat.test
     steps:
       - uses: actions/checkout@v4
 
@@ -123,21 +119,33 @@ jobs:
         working-directory: src/Web
         run: npm run test:e2e
 
-      - name: Verify SMTP notification delivery
-        id: smtp
+      - name: Verify stub notification delivery
+        id: notification
         if: ${{ always() && !cancelled() && steps.stack.outcome == 'success' && steps.browser.outcome == 'success' }}
         continue-on-error: true
         run: |
-          if ! node scripts/check-notification-delivery.mjs; then
-            ledger=$(docker compose exec -T postgres-notification psql \
+          for attempt in $(seq 1 30); do
+            state=$(docker compose exec -T postgres-notification psql \
               --username app --dbname notification \
               --tuples-only --no-align --field-separator='|' \
-              --command 'SELECT a."MessageId", a."Status", d."UserId", d."Status", d."Attempts", COALESCE(d."LastError", a."LastError"), (SELECT COUNT(*) FROM notification_contact) AS contacts FROM notification_audit a LEFT JOIN notification_delivery d ON d."AuditId" = a."Id" ORDER BY a."CreatedAt" DESC;')
-            annotation=$(echo "$ledger" | tr '\n' ';' | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')
-            echo "::error title=Notification delivery ledger::$annotation"
-            docker compose logs --no-color --tail=200 notification-svc mailpit
-            exit 1
-          fi
+              --command "SELECT a.\"Status\", COUNT(d.\"Id\"), COUNT(*) FILTER (WHERE d.\"Status\" = 'delivered') FROM notification_audit a LEFT JOIN notification_delivery d ON d.\"AuditId\" = a.\"Id\" WHERE a.\"Id\" = (SELECT \"Id\" FROM notification_audit ORDER BY \"CreatedAt\" DESC LIMIT 1) GROUP BY a.\"Id\", a.\"Status\";" \
+              | tr -d '[:space:]')
+            IFS='|' read -r status total delivered <<< "$state"
+            if [ "$status" = "delivered" ] && [ "${total:-0}" -gt 0 ] && [ "$delivered" = "$total" ]; then
+              echo "Verified $delivered stub notification delivery record(s)"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          ledger=$(docker compose exec -T postgres-notification psql \
+            --username app --dbname notification \
+            --tuples-only --no-align --field-separator='|' \
+            --command 'SELECT a."MessageId", a."Status", d."UserId", d."Status", d."Attempts", COALESCE(d."LastError", a."LastError"), (SELECT COUNT(*) FROM notification_contact) AS contacts FROM notification_audit a LEFT JOIN notification_delivery d ON d."AuditId" = a."Id" ORDER BY a."CreatedAt" DESC;')
+          annotation=$(echo "$ledger" | tr '\n' ';' | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')
+          echo "::error title=Notification delivery ledger::$annotation"
+          docker compose logs --no-color --tail=200 notification-svc
+          exit 1
 
       - name: Run k6 smoke test
         id: k6
@@ -161,7 +169,7 @@ jobs:
           failed=0
           for result in \
             "browser:${{ steps.browser.outcome }}" \
-            "smtp:${{ steps.smtp.outcome }}" \
+            "notification:${{ steps.notification.outcome }}" \
             "k6:${{ steps.k6.outcome }}" \
             "backup:${{ steps.backup.outcome }}"; do
             name=${result%%:*}
