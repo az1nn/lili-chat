@@ -26,11 +26,9 @@ record NotificationOptions(
             };
         if (provider.Equals("Stub", StringComparison.OrdinalIgnoreCase))
         {
-            var environment = configuration["ASPNETCORE_ENVIRONMENT"]
-                ?? configuration["DOTNET_ENVIRONMENT"];
-            if (!string.Equals(environment, "Test", StringComparison.OrdinalIgnoreCase))
+            if (!configuration.GetValue("Notifications:AllowStub", false))
                 throw new InvalidOperationException(
-                    "The Stub notification provider is only allowed when ASPNETCORE_ENVIRONMENT=Test.");
+                    "The Stub notification provider is disabled. Set Notifications:AllowStub=true for test runs.");
             return new(true, "", 25, false, "", null, null, false)
             {
                 Provider = "Stub"
