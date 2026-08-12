@@ -71,6 +71,8 @@ public static class ServiceDefaults
         this WebApplicationBuilder builder,
         string serviceName)
     {
+        NormalizePlatformConnectionStrings(builder.Configuration);
+
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(r => r.AddService(serviceName))
             .WithTracing(t => t
@@ -85,6 +87,73 @@ public static class ServiceDefaults
 
         builder.Services.AddHealthChecks();
         return builder;
+    }
+
+    static void NormalizePlatformConnectionStrings(IConfiguration configuration)
+    {
+        var postgres = configuration.GetConnectionString("Default");
+        if (!string.IsNullOrWhiteSpace(postgres) &&
+            TryNormalizePostgresUri(postgres, out var normalizedPostgres))
+            configuration["ConnectionStrings:Default"] = normalizedPostgres;
+
+        var redis = configuration["Redis:Connection"];
+        if (!string.IsNullOrWhiteSpace(redis) &&
+            TryNormalizeRedisUri(redis, out var normalizedRedis))
+            configuration["Redis:Connection"] = normalizedRedis;
+    }
+
+    static bool TryNormalizePostgresUri(string value, out string normalized)
+    {
+        normalized = value;
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != "postgres" && uri.Scheme != "postgresql"))
+            return false;
+
+        var userInfo = uri.UserInfo.Split(':', 2);
+        var database = Uri.UnescapeDataString(uri.AbsolutePath.TrimStart('/'));
+        if (userInfo.Length != 2 || string.IsNullOrWhiteSpace(uri.Host) ||
+            string.IsNullOrWhiteSpace(database))
+            throw new InvalidOperationException(
+                "PostgreSQL URL must include username, password, host and database.");
+
+        var builder = new DbConnectionStringBuilder
+        {
+            ["Host"] = uri.Host,
+            ["Port"] = uri.Port > 0 ? uri.Port : 5432,
+            ["Database"] = database,
+            ["Username"] = Uri.UnescapeDataString(userInfo[0]),
+            ["Password"] = Uri.UnescapeDataString(userInfo[1])
+        };
+        normalized = builder.ConnectionString;
+        return true;
+    }
+
+    static bool TryNormalizeRedisUri(string value, out string normalized)
+    {
+        normalized = value;
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != "redis" && uri.Scheme != "rediss"))
+            return false;
+        if (string.IsNullOrWhiteSpace(uri.Host))
+            throw new InvalidOperationException("Redis URL must include a host.");
+
+        var parts = new List<string>
+        {
+            $"{uri.Host}:{(uri.Port > 0 ? uri.Port : 6379)}"
+        };
+        if (!string.IsNullOrWhiteSpace(uri.UserInfo))
+        {
+            var userInfo = uri.UserInfo.Split(':', 2);
+            if (!string.IsNullOrWhiteSpace(userInfo[0]))
+                parts.Add($"user={Uri.UnescapeDataString(userInfo[0])}");
+            if (userInfo.Length == 2 && !string.IsNullOrWhiteSpace(userInfo[1]))
+                parts.Add($"password={Uri.UnescapeDataString(userInfo[1])}");
+        }
+        if (uri.Scheme == "rediss") parts.Add("ssl=true");
+        parts.Add("abortConnect=false");
+
+        normalized = string.Join(',', parts);
+        return true;
     }
 }
 
