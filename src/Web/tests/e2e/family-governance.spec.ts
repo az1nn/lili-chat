@@ -48,7 +48,7 @@ test('family Head can add a member, transfer leadership, and lifecycle continues
     await expect(member.locator('.family-header h2')).toHaveText(familyName)
     await expect(member.locator('.family-header')).toContainText('Member')
     await expect(member.getByRole('button', { name: 'Sair da família' })).toBeVisible()
-    await expect(member.queryByRole?.('button', { name: 'Editar' }) ?? member.locator('button', { hasText: 'Editar' })).toHaveCount(0)
+    await expect(member.getByRole('button', { name: 'Editar' })).toHaveCount(0)
 
     head.once('dialog', dialog => dialog.accept())
     await head.getByRole('button', { name: 'Tornar Head' }).click()
