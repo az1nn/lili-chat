@@ -64,6 +64,9 @@ jobs:
       - name: Validate deployment contracts
         run: ruby scripts/check-deployment-contracts.rb
 
+      - name: Validate security contracts
+        run: ruby scripts/check-security-contracts.rb
+
       - name: Validate repository and Compose
         run: |
           ./scripts/check-structure.sh
