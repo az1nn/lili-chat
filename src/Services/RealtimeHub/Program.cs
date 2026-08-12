@@ -254,13 +254,22 @@ class ChatHub(
             }
         }
 
+        using var publishTimeout = CancellationTokenSource.CreateLinkedTokenSource(
+            Context.ConnectionAborted);
+        publishTimeout.CancelAfter(TimeSpan.FromSeconds(5));
         try
         {
             await publish.Publish(new MessageCreatedEvent(
                 messageId, roomId, UserId, text, now, Guid.NewGuid(),
                 permission.RoomName, permission.NotificationUserIds.ToArray()),
-                Context.ConnectionAborted);
+                publishTimeout.Token);
             FamilyChatMetrics.MessagePublished.Add(1);
+        }
+        catch (OperationCanceledException) when (!Context.ConnectionAborted.IsCancellationRequested)
+        {
+            logger.LogWarning(
+                "Timed out publishing message {MessageId} room {RoomId}", messageId, roomId);
+            return new { success = false, error = "Mensageria temporariamente indisponível." };
         }
         catch
         {
