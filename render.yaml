@@ -1,0 +1,409 @@
+previews:
+  generation: off
+
+services:
+  - type: pserv
+    name: rabbitmq
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./deploy/rabbitmq/Dockerfile.render
+    dockerContext: ./deploy/rabbitmq
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: RABBITMQ_DEFAULT_USER
+        value: familychat
+      - key: RABBITMQ_DEFAULT_PASS
+        generateValue: true
+    disk:
+      name: rabbitmq-data
+      mountPath: /var/lib/rabbitmq
+      sizeGB: 1
+
+  - type: keyvalue
+    name: redis
+    plan: starter
+    region: oregon
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+    persistenceMode: journal-snapshot
+
+  - type: pserv
+    name: identity-svc
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./src/Services/Identity/Dockerfile
+    dockerContext: ./src
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:8080
+      - key: JWT__Issuer
+        value: familychat
+      - key: JWT__Audience
+        value: familychat-web
+      - key: JWT__PrivateKeyBase64
+        sync: false
+      - key: JWT__PublicKeyBase64
+        sync: false
+      - key: ConnectionStrings__Default
+        fromDatabase:
+          name: identity-db
+          property: connectionString
+      - key: RabbitMQ__Host
+        fromService:
+          type: pserv
+          name: rabbitmq
+          property: host
+      - key: RabbitMQ__User
+        fromService:
+          type: pserv
+          name: rabbitmq
+          envVarKey: RABBITMQ_DEFAULT_USER
+      - key: RabbitMQ__Pass
+        fromService:
+          type: pserv
+          name: rabbitmq
+          envVarKey: RABBITMQ_DEFAULT_PASS
+
+  - type: pserv
+    name: family-svc
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./src/Services/FamilyGraph/Dockerfile
+    dockerContext: ./src
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: JWT__Issuer
+        value: familychat
+      - key: JWT__Audience
+        value: familychat-web
+      - key: JWT__PublicKeyBase64
+        fromService:
+          type: pserv
+          name: identity-svc
+          envVarKey: JWT__PublicKeyBase64
+      - key: InternalAuth__Token
+        generateValue: true
+      - key: ConnectionStrings__Default
+        fromDatabase:
+          name: family-db
+          property: connectionString
+      - key: RabbitMQ__Host
+        fromService:
+          type: pserv
+          name: rabbitmq
+          property: host
+      - key: RabbitMQ__User
+        fromService:
+          type: pserv
+          name: rabbitmq
+          envVarKey: RABBITMQ_DEFAULT_USER
+      - key: RabbitMQ__Pass
+        fromService:
+          type: pserv
+          name: rabbitmq
+          envVarKey: RABBITMQ_DEFAULT_PASS
+
+  - type: pserv
+    name: room-svc
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./src/Services/Room/Dockerfile
+    dockerContext: ./src
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: JWT__Issuer
+        value: familychat
+      - key: JWT__Audience
+        value: familychat-web
+      - key: JWT__PublicKeyBase64
+        fromService:
+          type: pserv
+          name: identity-svc
+          envVarKey: JWT__PublicKeyBase64
+      - key: InternalAuth__Token
+        generateValue: true
+      - key: InternalAuth__FamilyToken
+        fromService:
+          type: pserv
+          name: family-svc
+          envVarKey: InternalAuth__Token
+      - key: Render__FamilyHost
+        fromService:
+          type: pserv
+          name: family-svc
+          property: host
+      - key: ConnectionStrings__Default
+        fromDatabase:
+          name: room-db
+          property: connectionString
+      - key: RabbitMQ__Host
+        fromService:
+          type: pserv
+          name: rabbitmq
+          property: host
+      - key: RabbitMQ__User
+        fromService:
+          type: pserv
+          name: rabbitmq
+          envVarKey: RABBITMQ_DEFAULT_USER
+      - key: RabbitMQ__Pass
+        fromService:
+          type: pserv
+          name: rabbitmq
+          envVarKey: RABBITMQ_DEFAULT_PASS
+
+  - type: pserv
+    name: message-svc
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./src/Services/Message/Dockerfile
+    dockerContext: ./src
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:8080
+      - key: JWT__Issuer
+        value: familychat
+      - key: JWT__Audience
+        value: familychat-web
+      - key: JWT__PublicKeyBase64
+        fromService:
+          type: pserv
+          name: identity-svc
+          envVarKey: JWT__PublicKeyBase64
+      - key: InternalAuth__RoomToken
+        fromService:
+          type: pserv
+          name: room-svc
+          envVarKey: InternalAuth__Token
+      - key: Render__RoomHost
+        fromService:
+          type: pserv
+          name: room-svc
+          property: host
+      - key: ConnectionStrings__Default
+        fromDatabase:
+          name: message-db
+          property: connectionString
+      - key: MessageRetention__Days
+        value: "365"
+      - key: MessageRetention__BatchSize
+        value: "1000"
+      - key: MessageRetention__MaxBatchesPerRun
+        value: "10"
+      - key: MessageRetention__IntervalMinutes
+        value: "360"
+      - key: RabbitMQ__Host
+        fromService:
+          type: pserv
+          name: rabbitmq
+          property: host
+      - key: RabbitMQ__User
+        fromService:
+          type: pserv
+          name: rabbitmq
+          envVarKey: RABBITMQ_DEFAULT_USER
+      - key: RabbitMQ__Pass
+        fromService:
+          type: pserv
+          name: rabbitmq
+          envVarKey: RABBITMQ_DEFAULT_PASS
+
+  - type: pserv
+    name: realtime-hub
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./src/Services/RealtimeHub/Dockerfile
+    dockerContext: ./src
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:8080
+      - key: JWT__Issuer
+        value: familychat
+      - key: JWT__Audience
+        value: familychat-web
+      - key: JWT__PublicKeyBase64
+        fromService:
+          type: pserv
+          name: identity-svc
+          envVarKey: JWT__PublicKeyBase64
+      - key: InternalAuth__RoomToken
+        fromService:
+          type: pserv
+          name: room-svc
+          envVarKey: InternalAuth__Token
+      - key: Render__RoomHost
+        fromService:
+          type: pserv
+          name: room-svc
+          property: host
+      - key: Redis__Connection
+        fromService:
+          type: keyvalue
+          name: redis
+          property: connectionString
+      - key: RabbitMQ__Host
+        fromService:
+          type: pserv
+          name: rabbitmq
+          property: host
+      - key: RabbitMQ__User
+        fromService:
+          type: pserv
+          name: rabbitmq
+          envVarKey: RABBITMQ_DEFAULT_USER
+      - key: RabbitMQ__Pass
+        fromService:
+          type: pserv
+          name: rabbitmq
+          envVarKey: RABBITMQ_DEFAULT_PASS
+
+  - type: pserv
+    name: notification-svc
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./src/Services/Notification/Dockerfile
+    dockerContext: ./src
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:8080
+      - key: InternalAuth__RoomToken
+        fromService:
+          type: pserv
+          name: room-svc
+          envVarKey: InternalAuth__Token
+      - key: Render__RoomHost
+        fromService:
+          type: pserv
+          name: room-svc
+          property: host
+      - key: ConnectionStrings__Default
+        fromDatabase:
+          name: notification-db
+          property: connectionString
+      - key: Notifications__Provider
+        value: Disabled
+      - key: Notifications__AllowStub
+        value: "false"
+      - key: Notifications__IncludeContent
+        value: "false"
+      - key: RabbitMQ__Host
+        fromService:
+          type: pserv
+          name: rabbitmq
+          property: host
+      - key: RabbitMQ__User
+        fromService:
+          type: pserv
+          name: rabbitmq
+          envVarKey: RABBITMQ_DEFAULT_USER
+      - key: RabbitMQ__Pass
+        fromService:
+          type: pserv
+          name: rabbitmq
+          envVarKey: RABBITMQ_DEFAULT_PASS
+
+  - type: web
+    name: gateway
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./src/Gateway/Dockerfile
+    dockerContext: ./src
+    autoDeployTrigger: checksPass
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:10000
+      - key: Cors__AllowedOrigins
+        sync: false
+      - key: Render__IdentityHost
+        fromService:
+          type: pserv
+          name: identity-svc
+          property: host
+      - key: Render__FamilyHost
+        fromService:
+          type: pserv
+          name: family-svc
+          property: host
+      - key: Render__RoomHost
+        fromService:
+          type: pserv
+          name: room-svc
+          property: host
+      - key: Render__MessageHost
+        fromService:
+          type: pserv
+          name: message-svc
+          property: host
+      - key: Render__RealtimeHost
+        fromService:
+          type: pserv
+          name: realtime-hub
+          property: host
+
+databases:
+  - name: identity-db
+    plan: basic-256mb
+    region: oregon
+    postgresMajorVersion: "16"
+    databaseName: identity
+    user: app
+    ipAllowList: []
+
+  - name: family-db
+    plan: basic-256mb
+    region: oregon
+    postgresMajorVersion: "16"
+    databaseName: familygraph
+    user: app
+    ipAllowList: []
+
+  - name: room-db
+    plan: basic-256mb
+    region: oregon
+    postgresMajorVersion: "16"
+    databaseName: room
+    user: app
+    ipAllowList: []
+
+  - name: message-db
+    plan: basic-256mb
+    region: oregon
+    postgresMajorVersion: "16"
+    databaseName: message
+    user: app
+    ipAllowList: []
+
+  - name: notification-db
+    plan: basic-256mb
+    region: oregon
+    postgresMajorVersion: "16"
+    databaseName: notification
+    user: app
+    ipAllowList: []
