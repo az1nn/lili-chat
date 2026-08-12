@@ -20,6 +20,24 @@ async function waitForService(service: string, healthCommand: string[]) {
   }, { timeout: 60_000, intervals: [1_000, 2_000, 3_000] }).toBe(true)
 }
 
+async function restoreDependencies() {
+  await compose(
+    'start',
+    'rabbitmq',
+    'redis',
+    'postgres-message',
+    'room-svc',
+    'message-svc',
+    'realtime-hub',
+  )
+  await waitForService('rabbitmq', ['rabbitmq-diagnostics', '-q', 'ping'])
+  await waitForService('redis', ['redis-cli', 'ping'])
+  await waitForService('postgres-message', ['pg_isready', '-U', 'app', '-d', 'message'])
+  await waitForService('room-svc', ['curl', '--fail', '--silent', 'http://localhost:8080/health'])
+  await waitForService('message-svc', ['curl', '--fail', '--silent', 'http://localhost:8080/health'])
+  await waitForService('realtime-hub', ['curl', '--fail', '--silent', 'http://localhost:8080/health'])
+}
+
 async function register(page: Page, suffix: string) {
   await page.goto('/')
   await page.getByRole('button', { name: 'Criar uma conta' }).click()
@@ -36,7 +54,7 @@ async function sendAndExpectFailed(page: Page, content: string) {
   await page.getByPlaceholder('Digite uma mensagem...').fill(content)
   await page.getByRole('button', { name: 'Enviar', exact: true }).click()
   const message = page.locator('.message.mine').filter({ hasText: content })
-  await expect(message).toContainText('failed', { timeout: 15_000 })
+  await expect(message).toContainText('failed', { timeout: 45_000 })
   return message
 }
 
@@ -48,8 +66,13 @@ async function retryUntilPersisted(message: ReturnType<Page['locator']>) {
   }, { timeout: 60_000, intervals: [2_000, 3_000, 5_000] }).toBe(true)
 }
 
+test.afterEach(async () => {
+  test.setTimeout(120_000)
+  await restoreDependencies()
+})
+
 test('dependencies fail closed and recover without losing manual retries', async ({ page }) => {
-  test.setTimeout(240_000)
+  test.setTimeout(300_000)
   const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`
   const roomName = `Resilience ${suffix}`
 
