@@ -71,7 +71,7 @@ public static class ServiceDefaults
         this WebApplicationBuilder builder,
         string serviceName)
     {
-        NormalizePlatformConnectionStrings(builder.Configuration);
+        NormalizePlatformConfiguration(builder.Configuration);
 
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(r => r.AddService(serviceName))
@@ -87,6 +87,36 @@ public static class ServiceDefaults
 
         builder.Services.AddHealthChecks();
         return builder;
+    }
+
+    static void NormalizePlatformConfiguration(IConfiguration configuration)
+    {
+        NormalizePlatformConnectionStrings(configuration);
+
+        SetServiceAddress(configuration, "Render:IdentityHost",
+            "ReverseProxy:Clusters:identity:Destinations:d1:Address", 8080);
+        SetServiceAddress(configuration, "Render:FamilyHost",
+            "ReverseProxy:Clusters:family:Destinations:d1:Address", 8080);
+        SetServiceAddress(configuration, "Render:RoomHost",
+            "ReverseProxy:Clusters:room:Destinations:d1:Address", 8080);
+        SetServiceAddress(configuration, "Render:MessageHost",
+            "ReverseProxy:Clusters:message:Destinations:d1:Address", 8080);
+        SetServiceAddress(configuration, "Render:RealtimeHost",
+            "ReverseProxy:Clusters:realtime:Destinations:d1:Address", 8080);
+
+        SetServiceAddress(configuration, "Render:FamilyHost", "Services:FamilyGraph", 8081);
+        SetServiceAddress(configuration, "Render:RoomHost", "Services:Room", 8081);
+    }
+
+    static void SetServiceAddress(
+        IConfiguration configuration,
+        string hostKey,
+        string destinationKey,
+        int port)
+    {
+        var host = configuration[hostKey]?.Trim();
+        if (!string.IsNullOrWhiteSpace(host))
+            configuration[destinationKey] = $"http://{host}:{port}";
     }
 
     static void NormalizePlatformConnectionStrings(IConfiguration configuration)
