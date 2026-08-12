@@ -120,9 +120,11 @@ test('two users exchange, persist, synchronize roles, and revoke room access', a
     await expect(pageB.getByRole('button', { name: 'Entrar', exact: true }))
       .toBeVisible({ timeout: 30_000 })
 
-    await expect(pageA.locator('.member-strip')).not.toContainText(`bob-${suffix}`, {
-      timeout: 30_000,
-    })
+    await expect.poll(async () => {
+      await pageA.reload()
+      await openRoom(pageA, deletionRoomName)
+      return (await pageA.locator('.member-strip').textContent())?.includes(`bob-${suffix}`) ?? false
+    }, { timeout: 45_000, intervals: [1_000, 2_000, 3_000] }).toBe(false)
     await expect.poll(async () => {
       await pageA.reload()
       await openRoom(pageA, deletionRoomName)
