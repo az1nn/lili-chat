@@ -71,6 +71,8 @@ public static class ServiceDefaults
         this WebApplicationBuilder builder,
         string serviceName)
     {
+        NormalizePlatformConfiguration(builder.Configuration);
+
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(r => r.AddService(serviceName))
             .WithTracing(t => t
@@ -85,6 +87,105 @@ public static class ServiceDefaults
 
         builder.Services.AddHealthChecks();
         return builder;
+    }
+
+    static void NormalizePlatformConfiguration(IConfiguration configuration)
+    {
+        NormalizePlatformConnectionStrings(configuration);
+
+        SetServiceAddress(configuration, "Render:IdentityHost",
+            "ReverseProxy:Clusters:identity:Destinations:d1:Address", 8080);
+        SetServiceAddress(configuration, "Render:FamilyHost",
+            "ReverseProxy:Clusters:family:Destinations:d1:Address", 8080);
+        SetServiceAddress(configuration, "Render:RoomHost",
+            "ReverseProxy:Clusters:room:Destinations:d1:Address", 8080);
+        SetServiceAddress(configuration, "Render:MessageHost",
+            "ReverseProxy:Clusters:message:Destinations:d1:Address", 8080);
+        SetServiceAddress(configuration, "Render:RealtimeHost",
+            "ReverseProxy:Clusters:realtime:Destinations:d1:Address", 8080);
+
+        SetServiceAddress(configuration, "Render:FamilyHost", "Services:FamilyGraph", 8081);
+        SetServiceAddress(configuration, "Render:RoomHost", "Services:Room", 8081);
+    }
+
+    static void SetServiceAddress(
+        IConfiguration configuration,
+        string hostKey,
+        string destinationKey,
+        int port)
+    {
+        var host = configuration[hostKey]?.Trim();
+        if (!string.IsNullOrWhiteSpace(host))
+            configuration[destinationKey] = $"http://{host}:{port}";
+    }
+
+    static void NormalizePlatformConnectionStrings(IConfiguration configuration)
+    {
+        var postgres = configuration.GetConnectionString("Default");
+        if (!string.IsNullOrWhiteSpace(postgres) &&
+            TryNormalizePostgresUri(postgres, out var normalizedPostgres))
+            configuration["ConnectionStrings:Default"] = normalizedPostgres;
+
+        var redis = configuration["Redis:Connection"];
+        if (!string.IsNullOrWhiteSpace(redis) &&
+            TryNormalizeRedisUri(redis, out var normalizedRedis))
+            configuration["Redis:Connection"] = normalizedRedis;
+    }
+
+    static bool TryNormalizePostgresUri(string value, out string normalized)
+    {
+        normalized = value;
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != "postgres" && uri.Scheme != "postgresql"))
+            return false;
+
+        var userInfo = uri.UserInfo.Split(':', 2);
+        var database = Uri.UnescapeDataString(uri.AbsolutePath.TrimStart('/'));
+        if (userInfo.Length != 2 || string.IsNullOrWhiteSpace(uri.Host) ||
+            string.IsNullOrWhiteSpace(database))
+            throw new InvalidOperationException(
+                "PostgreSQL URL must include username, password, host and database.");
+
+        var builder = new DbConnectionStringBuilder
+        {
+            ["Host"] = uri.Host,
+            ["Port"] = uri.Port > 0 ? uri.Port : 5432,
+            ["Database"] = database,
+            ["Username"] = Uri.UnescapeDataString(userInfo[0]),
+            ["Password"] = Uri.UnescapeDataString(userInfo[1])
+        };
+        normalized = builder.ConnectionString;
+        return true;
+    }
+
+    static bool TryNormalizeRedisUri(string value, out string normalized)
+    {
+        normalized = value;
+        if (!value.StartsWith("redis://", StringComparison.OrdinalIgnoreCase) &&
+            !value.StartsWith("rediss://", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
+            throw new InvalidOperationException("Redis URL is invalid.");
+        if (string.IsNullOrWhiteSpace(uri.Host))
+            throw new InvalidOperationException("Redis URL must include a host.");
+
+        var parts = new List<string>
+        {
+            $"{uri.Host}:{(uri.Port > 0 ? uri.Port : 6379)}"
+        };
+        if (!string.IsNullOrWhiteSpace(uri.UserInfo))
+        {
+            var userInfo = uri.UserInfo.Split(':', 2);
+            if (!string.IsNullOrWhiteSpace(userInfo[0]))
+                parts.Add($"user={Uri.UnescapeDataString(userInfo[0])}");
+            if (userInfo.Length == 2 && !string.IsNullOrWhiteSpace(userInfo[1]))
+                parts.Add($"password={Uri.UnescapeDataString(userInfo[1])}");
+        }
+        if (uri.Scheme == "rediss") parts.Add("ssl=true");
+        parts.Add("abortConnect=false");
+
+        normalized = string.Join(',', parts);
+        return true;
     }
 }
 
@@ -175,7 +276,7 @@ public static class JwtKeyFactory
             rsa.Dispose();
             return new RsaSecurityKey(publicOnly);
         }
-        catch (Exception ex) when (ex is FormatException or CryptographicException)
+        catch (Exception ex) when (ex is FormatException or ArgumentException or CryptographicException)
         {
             throw new InvalidOperationException("JWT RSA key is not valid base64-encoded PEM.", ex);
         }

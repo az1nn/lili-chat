@@ -57,6 +57,16 @@ jobs:
         working-directory: src/Web
         run: npm run build
 
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Validate deployment contracts
+        run: ruby scripts/check-deployment-contracts.rb
+
+      - name: Validate security contracts
+        run: ruby scripts/check-security-contracts.rb
+
       - name: Validate repository and Compose
         run: |
           ./scripts/check-structure.sh

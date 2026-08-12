@@ -34,4 +34,19 @@ public class RoomInputTests
     {
         Assert.Equal(expected, RoomInput.TryPublicId(input, out _));
     }
+
+    [Theory]
+    [InlineData(null, true, "Member")]
+    [InlineData("", true, "Member")]
+    [InlineData(" Member ", true, "Member")]
+    [InlineData("Admin", true, "Admin")]
+    [InlineData("Muted", true, "Muted")]
+    [InlineData("Owner", false, "Owner")]
+    [InlineData("admin", false, "admin")]
+    public void Role_RejectsUnknownValuesAndDefaultsOnlyMissingInput(
+        string? input, bool expected, string expectedRole)
+    {
+        Assert.Equal(expected, RoomInput.TryRole(input, out var role));
+        Assert.Equal(expectedRole, role);
+    }
 }

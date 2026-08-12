@@ -1,11 +1,12 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api'
 import { useAuth } from './AuthContext'
+import { FamilyPanel } from './FamilyPanel'
 import { oldestPersistedCursor, prependHistory } from './history'
 import { waitForProfileProjection } from './profileProjection'
-import { canChangeAdminRole, canManageRoom, canModerateMember, canSendMessages } from './roomPermissions'
+import { canChangeAdminRole, canManageRoom, canModerateMember, canSendMessages, canTransferOwnership } from './roomPermissions'
 import { useChat } from './useChat'
-import type { Room, Message, RoomMember, UserProfile } from './types'
+import type { Family, Room, Message, RoomMember, UserProfile } from './types'
 import './styles.css'
 
 function AuthScreen() {
@@ -178,6 +179,20 @@ export function ChatPanel({ room, token, me, onRoomChanged, onRoomClosed }: {
     }
   }
 
+  async function transferOwnership(member: RoomMember) {
+    if (!window.confirm(`Transferir a sala para ${member.username}?`)) return
+    try {
+      const updated = await api<Room>(`/api/v1/rooms/${room.id}/owner`, {
+        method: 'POST',
+        body: JSON.stringify({ userId: member.userId }),
+      }, token)
+      onRoomChanged(updated)
+      setMembers(await api<RoomMember[]>(`/api/v1/rooms/${room.id}/members`, {}, token))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Falha ao transferir sala')
+    }
+  }
+
   async function removeMember(member: RoomMember) {
     if (!window.confirm(`Remover ${member.username} da sala?`)) return
     try {
@@ -232,15 +247,18 @@ export function ChatPanel({ room, token, me, onRoomChanged, onRoomClosed }: {
 
     <aside className="member-strip">
       {members.map(m => <span key={m.userId}>
-        {m.username} · {m.role}
-        {canModerateMember(room, me, m) && <span className="member-actions">
-          {m.role === 'Muted'
-            ? <button onClick={() => updateMemberRole(m, 'Member')}>desmutar</button>
-            : <button onClick={() => updateMemberRole(m, 'Muted')}>silenciar</button>}
-          {canChangeAdminRole(room, me, m) && <button onClick={() => updateMemberRole(m, m.role === 'Admin' ? 'Member' : 'Admin')}>
-            {m.role === 'Admin' ? 'rebaixar' : 'admin'}
-          </button>}
-          <button onClick={() => removeMember(m)}>remover</button>
+        {m.username} · {m.role}{m.userId === room.ownerId && ' · owner'}
+        {(canModerateMember(room, me, m) || canTransferOwnership(room, me, m)) && <span className="member-actions">
+          {canModerateMember(room, me, m) && <>
+            {m.role === 'Muted'
+              ? <button onClick={() => updateMemberRole(m, 'Member')}>desmutar</button>
+              : <button onClick={() => updateMemberRole(m, 'Muted')}>silenciar</button>}
+            {canChangeAdminRole(room, me, m) && <button onClick={() => updateMemberRole(m, m.role === 'Admin' ? 'Member' : 'Admin')}>
+              {m.role === 'Admin' ? 'rebaixar' : 'admin'}
+            </button>}
+            <button onClick={() => removeMember(m)}>remover</button>
+          </>}
+          {canTransferOwnership(room, me, m) && <button onClick={() => transferOwnership(m)}>transferir sala</button>}
         </span>}
       </span>)}
     </aside>
@@ -251,10 +269,13 @@ function Workspace() {
   const { token, user, logout, deleteAccount } = useAuth()
   const [rooms, setRooms] = useState<Room[]>([])
   const [selected, setSelected] = useState<Room | null>(null)
+  const [families, setFamilies] = useState<Family[]>([])
+  const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileState, setProfileState] = useState<'loading' | 'ready' | 'timeout' | 'error'>('loading')
   const [profileRetry, setProfileRetry] = useState(0)
   const [name, setName] = useState('')
+  const [familyName, setFamilyName] = useState('')
   const [error, setError] = useState('')
   const [deletePassword, setDeletePassword] = useState('')
   const [deletingAccount, setDeletingAccount] = useState(false)
@@ -266,9 +287,18 @@ function Workspace() {
     if (selected) setSelected(r.find(x => x.id === selected.id) || null)
   }
 
+  async function loadFamilies() {
+    if (!token) return
+    const rows = await api<Family[]>('/api/v1/families', {}, token)
+    setFamilies(rows)
+    if (selectedFamilyId && !rows.some(family => family.id === selectedFamilyId)) {
+      setSelectedFamilyId(null)
+    }
+  }
+
   useEffect(() => {
     if (!token) return
-    loadRooms().catch(e => setError(e.message))
+    Promise.all([loadRooms(), loadFamilies()]).catch(e => setError(e.message))
   }, [token])
 
   useEffect(() => {
@@ -299,9 +329,26 @@ function Workspace() {
       }, token)
       setName('')
       await loadRooms()
+      setSelectedFamilyId(null)
       setSelected(room)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Falha')
+    }
+  }
+
+  async function createFamily(e: FormEvent) {
+    e.preventDefault()
+    try {
+      const family = await api<Family>('/api/v1/families', {
+        method: 'POST',
+        body: JSON.stringify({ name: familyName, description: '' }),
+      }, token)
+      setFamilyName('')
+      await loadFamilies()
+      setSelected(null)
+      setSelectedFamilyId(family.id)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Falha ao criar família')
     }
   }
 
@@ -328,6 +375,15 @@ function Workspace() {
     await loadRooms()
   }
 
+  async function familyChanged() {
+    await loadFamilies()
+  }
+
+  async function familyClosed() {
+    setSelectedFamilyId(null)
+    await loadFamilies()
+  }
+
   return <div className="app-shell">
     <aside className="sidebar">
       <div className="brand"><span className="logo small">FC</span><strong>Family Chat</strong></div>
@@ -342,16 +398,34 @@ function Workspace() {
         </div>}
       </div>
 
-      <form className="new-room" onSubmit={createRoom}>
-        <input placeholder="Nova sala" maxLength={100} required value={name} onChange={e => setName(e.target.value)} />
-        <button>+</button>
-      </form>
+      <section className="sidebar-group">
+        <div className="sidebar-title">Famílias</div>
+        <form className="new-room" onSubmit={createFamily}>
+          <input placeholder="Nova família" maxLength={100} required value={familyName} onChange={e => setFamilyName(e.target.value)} />
+          <button>+</button>
+        </form>
+        <div className="sidebar-list">
+          {families.map(family => <button key={family.id}
+            className={`room-button ${selectedFamilyId === family.id ? 'active' : ''}`}
+            onClick={() => { setSelected(null); setSelectedFamilyId(family.id) }}>
+            <span>{family.name}</span><small>{family.membersCount} membros · {family.role}</small>
+          </button>)}
+        </div>
+      </section>
 
-      <nav>
-        {rooms.map(room => <button key={room.id} className={`room-button ${selected?.id === room.id ? 'active' : ''}`} onClick={() => setSelected(room)}>
-          <span>{room.name}</span><small>{room.membersCount} membros</small>
-        </button>)}
-      </nav>
+      <section className="sidebar-group rooms-group">
+        <div className="sidebar-title">Salas</div>
+        <form className="new-room" onSubmit={createRoom}>
+          <input placeholder="Nova sala" maxLength={100} required value={name} onChange={e => setName(e.target.value)} />
+          <button>+</button>
+        </form>
+        <nav>
+          {rooms.map(room => <button key={room.id} className={`room-button ${selected?.id === room.id ? 'active' : ''}`}
+            onClick={() => { setSelectedFamilyId(null); setSelected(room) }}>
+            <span>{room.name}</span><small>{room.membersCount} membros</small>
+          </button>)}
+        </nav>
+      </section>
 
       {error && <div className="error">{error}</div>}
       <button className="ghost logout" onClick={logout}>Sair</button>
@@ -369,7 +443,10 @@ function Workspace() {
     {selected && token && user
       ? <ChatPanel room={selected} token={token} me={user.id}
           onRoomChanged={roomChanged} onRoomClosed={roomClosed} />
-      : <section className="welcome"><div><h1>Selecione ou crie uma sala</h1><p className="muted">Compartilhe seu PublicId para reunir a família.</p></div></section>}
+      : selectedFamilyId && token && user
+        ? <FamilyPanel familyId={selectedFamilyId} token={token} me={user.id}
+            onChanged={familyChanged} onClosed={familyClosed} />
+        : <section className="welcome"><div><h1>Selecione uma família ou sala</h1><p className="muted">Gerencie sua família e abra salas privadas para conversar.</p></div></section>}
   </div>
 }
 
