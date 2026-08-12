@@ -167,6 +167,30 @@ app.MapPatch("/api/v1/rooms/{roomId:guid}", async (
         room.Members.Count, actor!.Role, room.CreatedAt));
 }).RequireAuthorization();
 
+app.MapPost("/api/v1/rooms/{roomId:guid}/owner", async (
+    Guid roomId, HttpContext http, TransferRoomOwnerRequest req,
+    RoomDbContext db, CancellationToken ct) =>
+{
+    if (!TryUserId(http.User, out var userId)) return Results.Unauthorized();
+    var room = await db.Rooms.Include(r => r.Members)
+        .FirstOrDefaultAsync(r => r.Id == roomId && r.ArchivedAt == null, ct);
+    if (room is null) return Results.NotFound();
+
+    var decision = RoomOwnership.Transfer(room, userId, req.UserId);
+    if (decision == RoomOwnershipDecision.Forbidden) return Results.Forbid();
+    if (decision == RoomOwnershipDecision.TargetNotMember) return Results.NotFound();
+    if (decision == RoomOwnershipDecision.TargetAlreadyOwner)
+        return Results.Conflict(new { error = "O usuário informado já é owner da sala." });
+
+    db.Audits.Add(RoomAudit.Create(
+        room.Id, userId, req.UserId, "room.owner_transferred", $"{userId}->{req.UserId}"));
+    await db.SaveChangesAsync(ct);
+    var actor = room.Members.First(m => m.UserId == userId);
+    return Results.Ok(new RoomDto(
+        room.Id, room.Name, room.Description, room.OwnerId,
+        room.Members.Count, actor.Role, room.CreatedAt));
+}).RequireAuthorization();
+
 app.MapPost("/api/v1/rooms/{roomId:guid}/leave", async (
     Guid roomId, HttpContext http, RoomDbContext db, CancellationToken ct) =>
 {
@@ -175,7 +199,7 @@ app.MapPost("/api/v1/rooms/{roomId:guid}/leave", async (
         .FirstOrDefaultAsync(r => r.Id == roomId && r.ArchivedAt == null, ct);
     if (room is null) return Results.NotFound();
     if (room.OwnerId == userId)
-        return Results.Conflict(new { error = "O owner deve arquivar a sala." });
+        return Results.Conflict(new { error = "O owner deve transferir a sala ou arquivá-la antes de sair." });
     var member = room.Members.FirstOrDefault(m => m.UserId == userId);
     if (member is null) return Results.NotFound();
     db.RoomMembers.Remove(member);
@@ -279,6 +303,8 @@ app.MapPost("/api/v1/rooms/{roomId:guid}/members/by-public-id", async (
 
     var current = room.Members.FirstOrDefault(m => m.UserId == userId);
     if (current?.Role != "Admin") return Results.Forbid();
+    if (room.Members.Count >= RoomPolicy.MaxMembers)
+        return Results.Conflict(new { error = $"A sala atingiu o limite de {RoomPolicy.MaxMembers} membros." });
 
     UserInfoResponse resolved;
     try
@@ -414,9 +440,15 @@ record CreateRoomRequest(string Name, string? Description);
 record UpdateRoomRequest(string Name, string? Description);
 record AddMemberRequest(string PublicId, string? Role);
 record UpdateMemberRoleRequest(string? Role);
+record TransferRoomOwnerRequest(Guid UserId);
 record RoomDto(Guid Id, string Name, string? Description, Guid OwnerId, int MembersCount, string Role, DateTimeOffset CreatedAt);
 record RoomMemberDto(Guid UserId, string PublicId, string Username, string Role, DateTimeOffset JoinedAt);
 record RoomAuditDto(Guid Id, Guid ActorId, Guid? TargetUserId, string Action, string? Detail, DateTimeOffset OccurredAt);
+
+static class RoomPolicy
+{
+    public const int MaxMembers = 250;
+}
 
 static class RoomInput
 {
@@ -441,6 +473,7 @@ static class RoomInput
 }
 
 enum AuthorizationDecision { Allowed, Forbidden, OwnerProtected }
+enum RoomOwnershipDecision { Allowed, Forbidden, TargetNotMember, TargetAlreadyOwner }
 
 static class RoomAuthorization
 {
@@ -464,6 +497,23 @@ static class RoomAuthorization
         if (targetId == ownerId) return AuthorizationDecision.OwnerProtected;
         if (actorId != ownerId && targetRole == "Admin") return AuthorizationDecision.Forbidden;
         return AuthorizationDecision.Allowed;
+    }
+}
+
+static class RoomOwnership
+{
+    public static RoomOwnershipDecision Transfer(RoomEntity room, Guid actorId, Guid targetId)
+    {
+        if (room.OwnerId != actorId) return RoomOwnershipDecision.Forbidden;
+        if (targetId == room.OwnerId) return RoomOwnershipDecision.TargetAlreadyOwner;
+        var target = room.Members.FirstOrDefault(m => m.UserId == targetId);
+        if (target is null) return RoomOwnershipDecision.TargetNotMember;
+
+        var previousOwner = room.Members.FirstOrDefault(m => m.UserId == actorId);
+        if (previousOwner is not null) previousOwner.Role = "Admin";
+        target.Role = "Admin";
+        room.OwnerId = targetId;
+        return RoomOwnershipDecision.Allowed;
     }
 }
 
