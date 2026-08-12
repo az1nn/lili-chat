@@ -161,6 +161,7 @@ class MessageNotificationConsumer(
             }
             catch (OperationCanceledException ex) when (!context.CancellationToken.IsCancellationRequested)
             {
+                DiscardPendingDeliveries(audit);
                 audit.Status = NotificationStatuses.TargetResolutionFailed;
                 audit.LastError = NotificationFailure.SafeMessage(
                     new TimeoutException("Notification target resolution exceeded 10 seconds.", ex));
@@ -170,6 +171,7 @@ class MessageNotificationConsumer(
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                DiscardPendingDeliveries(audit);
                 audit.Status = NotificationStatuses.TargetResolutionFailed;
                 audit.LastError = NotificationFailure.SafeMessage(ex);
                 FamilyChatMetrics.NotificationFailed.Add(1);
@@ -310,16 +312,32 @@ class MessageNotificationConsumer(
 
         audit.Status = NotificationStatuses.CreatingDeliveries;
         await db.SaveChangesAsync(ct);
-        var deliveries = NotificationRecipients.Valid(recipients, e.SenderId)
-            .Select(recipient => new NotificationDelivery
+        foreach (var recipient in NotificationRecipients.Valid(recipients, e.SenderId))
+        {
+            var delivery = new NotificationDelivery
             {
                 Id = Guid.NewGuid(), AuditId = audit.Id, UserId = recipient.UserId,
-                Recipient = recipient.Email, Status = NotificationStatuses.Queued,
-                Audit = audit
-            })
-            .ToArray();
-        db.Deliveries.AddRange(deliveries);
+                Recipient = recipient.Email, Status = NotificationStatuses.Queued
+            };
+            audit.Deliveries.Add(delivery);
+            db.Deliveries.Add(delivery);
+        }
         await db.SaveChangesAsync(ct);
+    }
+
+    void DiscardPendingDeliveries(NotificationAudit audit)
+    {
+        var pendingDeliveries = db.ChangeTracker.Entries<NotificationDelivery>()
+            .Where(entry => entry.Entity.AuditId == audit.Id &&
+                entry.State is EntityState.Added or EntityState.Modified)
+            .Select(entry => entry.Entity)
+            .ToArray();
+
+        foreach (var delivery in pendingDeliveries)
+        {
+            audit.Deliveries.Remove(delivery);
+            db.Entry(delivery).State = EntityState.Detached;
+        }
     }
 }
 

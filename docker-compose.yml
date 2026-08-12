@@ -239,6 +239,7 @@ services:
       InternalAuth__RoomToken: ${INTERNAL_ROOM_TOKEN}
       Services__Room: http://room-svc:8081
       Notifications__Provider: ${NOTIFICATION_PROVIDER:-Disabled}
+      Notifications__AllowStub: ${NOTIFICATION_ALLOW_STUB:-false}
       Notifications__IncludeContent: ${NOTIFICATION_INCLUDE_CONTENT:-false}
       Notifications__Smtp__Host: ${SMTP_HOST:-}
       Notifications__Smtp__Port: ${SMTP_PORT:-587}

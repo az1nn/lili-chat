@@ -13,13 +13,29 @@ record NotificationOptions(
     string? Password,
     bool IncludeContent)
 {
+    public string Provider { get; init; } = "Smtp";
+    public bool IsStub => Provider.Equals("Stub", StringComparison.OrdinalIgnoreCase);
+
     public static NotificationOptions Load(IConfiguration configuration)
     {
         var provider = configuration["Notifications:Provider"]?.Trim() ?? "Disabled";
         if (provider.Equals("Disabled", StringComparison.OrdinalIgnoreCase))
-            return new(false, "", 25, false, "", null, null, false);
+            return new(false, "", 25, false, "", null, null, false)
+            {
+                Provider = "Disabled"
+            };
+        if (provider.Equals("Stub", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!configuration.GetValue("Notifications:AllowStub", false))
+                throw new InvalidOperationException(
+                    "The Stub notification provider is disabled. Set Notifications:AllowStub=true for test runs.");
+            return new(true, "", 25, false, "", null, null, false)
+            {
+                Provider = "Stub"
+            };
+        }
         if (!provider.Equals("Smtp", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Notifications:Provider must be Disabled or Smtp.");
+            throw new InvalidOperationException("Notifications:Provider must be Disabled, Stub or Smtp.");
 
         var host = configuration["Notifications:Smtp:Host"]?.Trim();
         var from = configuration["Notifications:Smtp:From"]?.Trim();
@@ -38,7 +54,10 @@ record NotificationOptions(
         return new(true, host, port,
             configuration.GetValue("Notifications:Smtp:EnableSsl", true), from!,
             username, password,
-            configuration.GetValue("Notifications:IncludeContent", false));
+            configuration.GetValue("Notifications:IncludeContent", false))
+        {
+            Provider = "Smtp"
+        };
     }
 
     static string? NullIfBlank(string? value) =>
@@ -57,6 +76,12 @@ sealed class SmtpNotificationSender(NotificationOptions options) : INotification
     public async Task SendAsync(NotificationEnvelope notification, CancellationToken cancellationToken)
     {
         if (!options.Enabled) return;
+        if (options.IsStub)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return;
+        }
+
         using var message = CreateMessage(options, notification);
 
         using var smtp = new SmtpClient(options.Host, options.Port)

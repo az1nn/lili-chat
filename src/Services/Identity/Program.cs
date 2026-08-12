@@ -205,7 +205,7 @@ app.MapPost("/api/v1/auth/logout", async (
 });
 
 app.MapDelete("/api/v1/auth/account", async (
-    DeleteAccountRequest req,
+    [Microsoft.AspNetCore.Mvc.FromBodyAttribute] DeleteAccountRequest req,
     HttpContext http,
     IdentityDbContext db,
     IPasswordHasher<AppUser> hasher,

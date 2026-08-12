@@ -35,6 +35,41 @@ public class NotificationDeliveryTests
     }
 
     [Fact]
+    public void StubProvider_RequiresExplicitOptIn()
+    {
+        var disabled = Configuration(new()
+        {
+            ["Notifications:Provider"] = "Stub"
+        });
+        Assert.Throws<InvalidOperationException>(() => NotificationOptions.Load(disabled));
+
+        var enabled = Configuration(new()
+        {
+            ["Notifications:Provider"] = "Stub",
+            ["Notifications:AllowStub"] = "true"
+        });
+        var options = NotificationOptions.Load(enabled);
+
+        Assert.True(options.Enabled);
+        Assert.True(options.IsStub);
+    }
+
+    [Fact]
+    public async Task StubProvider_CompletesWithoutSmtpConfiguration()
+    {
+        var options = NotificationOptions.Load(Configuration(new()
+        {
+            ["Notifications:Provider"] = "Stub",
+            ["Notifications:AllowStub"] = "true"
+        }));
+        var sender = new SmtpNotificationSender(options);
+
+        await sender.SendAsync(new NotificationEnvelope(
+            Guid.NewGuid(), "recipient@example.test", "Família", "segredo"),
+            CancellationToken.None);
+    }
+
+    [Fact]
     public void RecipientSelection_ExcludesSenderInvalidEmailsAndDuplicates()
     {
         var sender = Guid.NewGuid();

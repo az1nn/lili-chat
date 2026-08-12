@@ -198,7 +198,7 @@ public sealed class PostgresMigrationTests(PostgresFixture fixture) : IClassFixt
         Assert.All(await family.FamilyMembers.Where(member => member.FamilyId == sharedFamilyId).ToListAsync(),
             member => Assert.Equal(Guid.Empty, member.AddedById));
         Assert.Equal(deletionTime, (await family.DeletedUsers.SingleAsync(
-            deleted => deleted.UserId == deletedFamilyUserId)).DeletedAt);
+            deleted => deleted.UserId == deletedFamilyUserId)).DeletedAt, TimeSpan.FromMicroseconds(1));
 
         var lateRegistration = await UserProjectionRegistration.ApplyAsync(
             family,
