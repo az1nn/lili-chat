@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canChangeAdminRole, canManageRoom, canModerateMember, canSendMessages } from './roomPermissions'
+import { canChangeAdminRole, canManageRoom, canModerateMember, canSendMessages, canTransferOwnership } from './roomPermissions'
 import type { Room, RoomMember, RoomRole } from './types'
 
 const ownerId = 'owner'
@@ -40,5 +40,11 @@ describe('room UI permissions', () => {
   it('reserves promotion and demotion of admins to the owner', () => {
     expect(canChangeAdminRole(room('Admin'), ownerId, member('member', 'Member'))).toBe(true)
     expect(canChangeAdminRole(room('Admin'), 'actor', member('member', 'Member'))).toBe(false)
+  })
+
+  it('only exposes ownership transfer to the current owner and another member', () => {
+    expect(canTransferOwnership(room('Admin'), ownerId, member('member', 'Member'))).toBe(true)
+    expect(canTransferOwnership(room('Admin'), 'actor', member('member', 'Member'))).toBe(false)
+    expect(canTransferOwnership(room('Admin'), ownerId, member(ownerId, 'Admin'))).toBe(false)
   })
 })
