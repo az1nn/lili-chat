@@ -161,9 +161,11 @@ public static class ServiceDefaults
     static bool TryNormalizeRedisUri(string value, out string normalized)
     {
         normalized = value;
-        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
-            (uri.Scheme != "redis" && uri.Scheme != "rediss"))
+        if (!value.StartsWith("redis://", StringComparison.OrdinalIgnoreCase) &&
+            !value.StartsWith("rediss://", StringComparison.OrdinalIgnoreCase))
             return false;
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
+            throw new InvalidOperationException("Redis URL is invalid.");
         if (string.IsNullOrWhiteSpace(uri.Host))
             throw new InvalidOperationException("Redis URL must include a host.");
 
