@@ -276,7 +276,7 @@ public static class JwtKeyFactory
             rsa.Dispose();
             return new RsaSecurityKey(publicOnly);
         }
-        catch (Exception ex) when (ex is FormatException or CryptographicException)
+        catch (Exception ex) when (ex is FormatException or ArgumentException or CryptographicException)
         {
             throw new InvalidOperationException("JWT RSA key is not valid base64-encoded PEM.", ex);
         }
