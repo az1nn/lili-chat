@@ -296,13 +296,16 @@ app.MapPost("/api/v1/rooms/{roomId:guid}/members/by-public-id", async (
     if (!TryUserId(http.User, out var userId)) return Results.Unauthorized();
     if (!RoomInput.TryPublicId(req.PublicId, out var publicId))
         return Results.BadRequest(new { error = "PublicId inválido." });
+    if (!RoomInput.TryRole(req.Role, out var role))
+        return Results.BadRequest(new { error = "Role inválida." });
 
     var room = await db.Rooms.Include(r => r.Members)
         .FirstOrDefaultAsync(r => r.Id == roomId && r.ArchivedAt == null, ct);
     if (room is null) return Results.NotFound();
 
     var current = room.Members.FirstOrDefault(m => m.UserId == userId);
-    if (current?.Role != "Admin") return Results.Forbid();
+    if (!RoomAuthorization.CanAssignRole(userId, current?.Role, room.OwnerId, role))
+        return Results.Forbid();
     if (room.Members.Count >= RoomPolicy.MaxMembers)
         return Results.Conflict(new { error = $"A sala atingiu o limite de {RoomPolicy.MaxMembers} membros." });
 
@@ -325,12 +328,6 @@ app.MapPost("/api/v1/rooms/{roomId:guid}/members/by-public-id", async (
     if (room.Members.Any(m => m.UserId == targetId))
         return Results.Conflict(new { error = "Usuário já está na sala." });
 
-    var role = req.Role?.Trim() switch
-    {
-        "Admin" => "Admin",
-        "Muted" => "Muted",
-        _ => "Member"
-    };
     var member = new RoomMember
     {
         Id = Guid.NewGuid(),
@@ -362,14 +359,8 @@ app.MapPatch("/api/v1/rooms/{roomId:guid}/members/{targetId:guid}/role", async (
     var target = room.Members.FirstOrDefault(m => m.UserId == targetId);
     if (target is null) return Results.NotFound();
 
-    var role = req.Role?.Trim() switch
-    {
-        "Admin" => "Admin",
-        "Member" => "Member",
-        "Muted" => "Muted",
-        _ => null
-    };
-    if (role is null) return Results.BadRequest(new { error = "Role inválida." });
+    if (!RoomInput.TryRole(req.Role, out var role))
+        return Results.BadRequest(new { error = "Role inválida." });
     var decision = RoomAuthorization.CanChangeRole(
         userId, actor?.Role, room.OwnerId, target.UserId, target.Role, role);
     if (decision == AuthorizationDecision.OwnerProtected)
@@ -470,6 +461,18 @@ static class RoomInput
         publicId = input?.Trim().ToUpperInvariant() ?? "";
         return publicId.Length == 8 && publicId.All(PublicIdAlphabet.Contains);
     }
+
+    public static bool TryRole(string? input, out string role)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            role = "Member";
+            return true;
+        }
+
+        role = input.Trim();
+        return role is "Admin" or "Member" or "Muted";
+    }
 }
 
 enum AuthorizationDecision { Allowed, Forbidden, OwnerProtected }
@@ -478,6 +481,10 @@ enum RoomOwnershipDecision { Allowed, Forbidden, TargetNotMember, TargetAlreadyO
 static class RoomAuthorization
 {
     public static bool CanManageRoom(string? actorRole) => actorRole == "Admin";
+
+    public static bool CanAssignRole(
+        Guid actorId, string? actorRole, Guid ownerId, string role) =>
+        CanManageRoom(actorRole) && (role != "Admin" || actorId == ownerId);
 
     public static AuthorizationDecision CanChangeRole(
         Guid actorId, string? actorRole, Guid ownerId,
