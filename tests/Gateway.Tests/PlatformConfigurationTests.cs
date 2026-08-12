@@ -23,11 +23,11 @@ public class PlatformConfigurationTests
         {
             ConnectionString = builder.Configuration.GetConnectionString("Default")!
         };
-        Assert.Equal("db.internal", postgres["Host"]);
-        Assert.Equal(5432, postgres["Port"]);
-        Assert.Equal("chat", postgres["Database"]);
-        Assert.Equal("app", postgres["Username"]);
-        Assert.Equal("p@ss", postgres["Password"]);
+        Assert.Equal("db.internal", postgres["Host"]?.ToString());
+        Assert.Equal("5432", postgres["Port"]?.ToString());
+        Assert.Equal("chat", postgres["Database"]?.ToString());
+        Assert.Equal("app", postgres["Username"]?.ToString());
+        Assert.Equal("p@ss", postgres["Password"]?.ToString());
 
         Assert.Equal("redis.internal:6379,abortConnect=false",
             builder.Configuration["Redis:Connection"]);
