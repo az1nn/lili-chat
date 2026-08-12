@@ -38,7 +38,7 @@ test('two users exchange, persist, synchronize roles, and revoke room access', a
     expect(publicIdB).toBeTruthy()
 
     await pageA.getByPlaceholder('Nova sala').fill(roomName)
-    await pageA.locator('.new-room button').click()
+    await pageA.getByPlaceholder('Nova sala').press('Enter')
     await expect(pageA.locator('.chat-header h2')).toHaveText(roomName)
     await pageA.getByPlaceholder('PublicId do familiar').fill(publicIdB!)
     await pageA.locator('.invite button').click()
@@ -77,13 +77,13 @@ test('two users exchange, persist, synchronize roles, and revoke room access', a
 
     await expect(pageB.getByRole('button', { name: new RegExp(roomName) }))
       .toHaveCount(0, { timeout: 30_000 })
-    await expect(pageB.locator('.welcome')).toContainText('Selecione ou crie uma sala')
+    await expect(pageB.locator('.welcome')).toContainText('Selecione uma família ou sala')
 
     await pageB.reload()
     await expect(pageB.getByRole('button', { name: new RegExp(roomName) })).toHaveCount(0)
 
     await pageA.getByPlaceholder('Nova sala').fill(archivedRoomName)
-    await pageA.locator('.new-room button').click()
+    await pageA.getByPlaceholder('Nova sala').press('Enter')
     await pageA.getByPlaceholder('PublicId do familiar').fill(publicIdB!)
     await pageA.locator('.invite button').click()
     await expect(pageA.locator('.member-strip')).toContainText(`bob-${suffix}`)
@@ -98,10 +98,10 @@ test('two users exchange, persist, synchronize roles, and revoke room access', a
       .toHaveCount(0)
     await expect(pageB.getByRole('button', { name: new RegExp(archivedRoomName) }))
       .toHaveCount(0, { timeout: 30_000 })
-    await expect(pageB.locator('.welcome')).toContainText('Selecione ou crie uma sala')
+    await expect(pageB.locator('.welcome')).toContainText('Selecione uma família ou sala')
 
     await pageA.getByPlaceholder('Nova sala').fill(deletionRoomName)
-    await pageA.locator('.new-room button').click()
+    await pageA.getByPlaceholder('Nova sala').press('Enter')
     await pageA.getByPlaceholder('PublicId do familiar').fill(publicIdB!)
     await pageA.locator('.invite button').click()
     await expect(pageA.locator('.member-strip')).toContainText(`bob-${suffix}`)
