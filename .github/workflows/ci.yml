@@ -110,18 +110,20 @@ jobs:
         id: stack
         run: |
           diagnose_stack() {
-            echo "::group::Distributed stack diagnostics"
-            docker compose ps --all || true
-            identity_id=$(docker compose ps --all --quiet identity-svc 2>/dev/null || true)
+            echo "=== Distributed stack diagnostics ==="
+            docker compose ps --all 2>&1 || true
+
+            identity_id=$(docker ps -aq --filter "name=familychat-identity-svc-1" | head -n1 || true)
+            echo "identity-svc container id: ${identity_id:-<none>}"
+
             if [ -n "$identity_id" ]; then
+              echo "=== identity-svc state ==="
               docker inspect \
-                --format 'identity-svc state: status={{.State.Status}} exit={{.State.ExitCode}} oomKilled={{.State.OOMKilled}} error={{json .State.Error}} startedAt={{.State.StartedAt}} finishedAt={{.State.FinishedAt}}' \
-                "$identity_id" || true
-              docker compose logs --no-color --tail=300 identity-svc || true
-            else
-              echo "identity-svc container was not created"
+                --format 'status={{.State.Status}} exit={{.State.ExitCode}} oomKilled={{.State.OOMKilled}} error={{json .State.Error}} startedAt={{.State.StartedAt}} finishedAt={{.State.FinishedAt}}' \
+                "$identity_id" 2>&1 || true
+              echo "=== identity-svc logs ==="
+              docker logs --tail 300 "$identity_id" 2>&1 || true
             fi
-            echo "::endgroup::"
           }
           trap diagnose_stack ERR
           cp .env.example .env
@@ -208,8 +210,8 @@ jobs:
       - name: Capture container logs
         if: failure()
         run: |
-          docker compose ps --all || true
-          docker compose logs --no-color --tail=300 || true
+          docker compose ps --all 2>&1 || true
+          docker compose logs --no-color --tail=300 2>&1 || true
 
       - name: Stop distributed stack
         if: always()
