@@ -109,9 +109,25 @@ jobs:
       - name: Start distributed stack
         id: stack
         run: |
+          diagnose_stack() {
+            echo "::group::Distributed stack diagnostics"
+            docker compose ps --all || true
+            identity_id=$(docker compose ps --all --quiet identity-svc 2>/dev/null || true)
+            if [ -n "$identity_id" ]; then
+              docker inspect \
+                --format 'identity-svc state: status={{.State.Status}} exit={{.State.ExitCode}} oomKilled={{.State.OOMKilled}} error={{json .State.Error}} startedAt={{.State.StartedAt}} finishedAt={{.State.FinishedAt}}' \
+                "$identity_id" || true
+              docker compose logs --no-color --tail=300 identity-svc || true
+            else
+              echo "identity-svc container was not created"
+            fi
+            echo "::endgroup::"
+          }
+          trap diagnose_stack ERR
           cp .env.example .env
           docker compose up --detach --build --wait --wait-timeout 240
           curl --fail http://localhost:5000/health
+          trap - ERR
 
       - name: Run two-user browser flow
         id: browser
@@ -191,7 +207,9 @@ jobs:
 
       - name: Capture container logs
         if: failure()
-        run: docker compose logs --no-color --tail=300
+        run: |
+          docker compose ps --all || true
+          docker compose logs --no-color --tail=300 || true
 
       - name: Stop distributed stack
         if: always()
