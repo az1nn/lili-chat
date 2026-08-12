@@ -18,3 +18,7 @@ export function canChangeAdminRole(room: Room, actorId: string, target: RoomMemb
     && target.userId !== room.ownerId
     && target.userId !== actorId
 }
+
+export function canTransferOwnership(room: Room, actorId: string, target: RoomMember) {
+  return actorId === room.ownerId && target.userId !== actorId
+}
