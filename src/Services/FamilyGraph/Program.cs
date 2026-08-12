@@ -88,7 +88,10 @@ app.MapGet("/api/v1/families", async (HttpContext http, FamilyDbContext db, Canc
     if (!TryUserId(http.User, out var userId)) return Results.Unauthorized();
     var items = await db.FamilyMembers.AsNoTracking()
         .Where(m => m.UserId == userId)
-        .Select(m => new FamilyDto(m.Family.Id, m.Family.Name, m.Role, m.Family.Members.Count))
+        .OrderByDescending(m => m.JoinedAt)
+        .Select(m => new FamilyDto(
+            m.Family.Id, m.Family.Name, m.Family.Description, m.Role,
+            m.Family.Members.Count, m.Family.CreatedAt))
         .ToListAsync(ct);
     return Results.Ok(items);
 }).RequireAuthorization();
@@ -120,7 +123,58 @@ app.MapPost("/api/v1/families", async (
     db.Families.Add(family);
     await db.SaveChangesAsync(ct);
     return Results.Created($"/api/v1/families/{family.Id}",
-        new FamilyDto(family.Id, family.Name, "Head", 1));
+        new FamilyDto(family.Id, family.Name, family.Description, "Head", 1, family.CreatedAt));
+}).RequireAuthorization();
+
+app.MapGet("/api/v1/families/{familyId:guid}", async (
+    Guid familyId, HttpContext http, FamilyDbContext db, CancellationToken ct) =>
+{
+    if (!TryUserId(http.User, out var userId)) return Results.Unauthorized();
+    var family = await db.Families.AsNoTracking()
+        .Include(f => f.Members).ThenInclude(m => m.User)
+        .FirstOrDefaultAsync(f => f.Id == familyId, ct);
+    if (family is null) return Results.NotFound();
+    var current = family.Members.FirstOrDefault(m => m.UserId == userId);
+    if (current is null) return Results.Forbid();
+    return Results.Ok(FamilyDetailsDto.From(family, current.Role));
+}).RequireAuthorization();
+
+app.MapPatch("/api/v1/families/{familyId:guid}", async (
+    Guid familyId, HttpContext http, UpdateFamilyRequest req,
+    FamilyDbContext db, CancellationToken ct) =>
+{
+    if (!TryUserId(http.User, out var userId)) return Results.Unauthorized();
+    if (!FamilyInput.TryText(req.Name, req.Description, out var name, out var description))
+        return Results.BadRequest(new { error = "Nome deve ter 1–100 e descrição até 1000 caracteres." });
+
+    var family = await db.Families.Include(f => f.Members).ThenInclude(m => m.User)
+        .FirstOrDefaultAsync(f => f.Id == familyId, ct);
+    if (family is null) return Results.NotFound();
+    var current = family.Members.FirstOrDefault(m => m.UserId == userId);
+    if (!FamilyGovernance.CanManage(current?.Role)) return Results.Forbid();
+
+    family.Name = name;
+    family.Description = description;
+    await db.SaveChangesAsync(ct);
+    return Results.Ok(FamilyDetailsDto.From(family, current!.Role));
+}).RequireAuthorization();
+
+app.MapGet("/api/v1/families/{familyId:guid}/members", async (
+    Guid familyId, HttpContext http, FamilyDbContext db, CancellationToken ct) =>
+{
+    if (!TryUserId(http.User, out var userId)) return Results.Unauthorized();
+    if (!await db.FamilyMembers.AsNoTracking()
+        .AnyAsync(m => m.FamilyId == familyId && m.UserId == userId, ct))
+        return Results.Forbid();
+
+    var members = await db.FamilyMembers.AsNoTracking()
+        .Where(m => m.FamilyId == familyId)
+        .OrderByDescending(m => m.Role == "Head")
+        .ThenBy(m => m.JoinedAt)
+        .Select(m => new FamilyMemberDto(
+            m.UserId, m.User.PublicId, m.User.Username, m.Role, m.JoinedAt))
+        .ToListAsync(ct);
+    return Results.Ok(members);
 }).RequireAuthorization();
 
 app.MapPost("/api/v1/families/{familyId:guid}/members", async (
@@ -136,7 +190,9 @@ app.MapPost("/api/v1/families/{familyId:guid}/members", async (
     if (family is null) return Results.NotFound();
 
     var current = family.Members.FirstOrDefault(m => m.UserId == userId);
-    if (current?.Role != "Head") return Results.Forbid();
+    if (!FamilyGovernance.CanManage(current?.Role)) return Results.Forbid();
+    if (family.Members.Count >= FamilyPolicy.MaxMembers)
+        return Results.Conflict(new { error = $"A família atingiu o limite de {FamilyPolicy.MaxMembers} membros." });
 
     var target = await db.Users.FirstOrDefaultAsync(
         u => u.PublicId == publicId, ct);
@@ -144,17 +200,89 @@ app.MapPost("/api/v1/families/{familyId:guid}/members", async (
     if (family.Members.Any(m => m.UserId == target.Id))
         return Results.Conflict(new { error = "Usuário já pertence à família." });
 
-    family.Members.Add(new FamilyMember
+    var member = new FamilyMember
     {
         Id = Guid.NewGuid(),
         UserId = target.Id,
         Role = "Member",
         AddedById = userId,
         JoinedAt = DateTimeOffset.UtcNow
-    });
+    };
+    family.Members.Add(member);
     await db.SaveChangesAsync(ct);
     return Results.Created($"/api/v1/families/{familyId}/members",
-        new { target.Id, target.PublicId, target.Username });
+        new FamilyMemberDto(target.Id, target.PublicId, target.Username, member.Role, member.JoinedAt));
+}).RequireAuthorization();
+
+app.MapDelete("/api/v1/families/{familyId:guid}/members/{targetId:guid}", async (
+    Guid familyId, Guid targetId, HttpContext http, FamilyDbContext db, CancellationToken ct) =>
+{
+    if (!TryUserId(http.User, out var userId)) return Results.Unauthorized();
+    var family = await db.Families.Include(f => f.Members)
+        .FirstOrDefaultAsync(f => f.Id == familyId, ct);
+    if (family is null) return Results.NotFound();
+    var current = family.Members.FirstOrDefault(m => m.UserId == userId);
+    if (!FamilyGovernance.CanManage(current?.Role)) return Results.Forbid();
+
+    var target = family.Members.FirstOrDefault(m => m.UserId == targetId);
+    if (target is null) return Results.NotFound();
+    if (target.Role == "Head")
+        return Results.Conflict(new { error = "Transfira o papel de Head antes de remover este membro." });
+
+    db.FamilyMembers.Remove(target);
+    await db.SaveChangesAsync(ct);
+    return Results.NoContent();
+}).RequireAuthorization();
+
+app.MapPost("/api/v1/families/{familyId:guid}/head", async (
+    Guid familyId, HttpContext http, TransferFamilyHeadRequest req,
+    FamilyDbContext db, CancellationToken ct) =>
+{
+    if (!TryUserId(http.User, out var userId)) return Results.Unauthorized();
+    var family = await db.Families.Include(f => f.Members).ThenInclude(m => m.User)
+        .FirstOrDefaultAsync(f => f.Id == familyId, ct);
+    if (family is null) return Results.NotFound();
+
+    var decision = FamilyGovernance.TransferHead(family, userId, req.UserId);
+    if (decision == FamilyGovernanceDecision.Forbidden) return Results.Forbid();
+    if (decision == FamilyGovernanceDecision.TargetNotMember) return Results.NotFound();
+    if (decision == FamilyGovernanceDecision.TargetAlreadyHead)
+        return Results.Conflict(new { error = "O usuário informado já é Head da família." });
+
+    await db.SaveChangesAsync(ct);
+    return Results.Ok(FamilyDetailsDto.From(family, "Member"));
+}).RequireAuthorization();
+
+app.MapPost("/api/v1/families/{familyId:guid}/leave", async (
+    Guid familyId, HttpContext http, FamilyDbContext db, CancellationToken ct) =>
+{
+    if (!TryUserId(http.User, out var userId)) return Results.Unauthorized();
+    var family = await db.Families.Include(f => f.Members)
+        .FirstOrDefaultAsync(f => f.Id == familyId, ct);
+    if (family is null) return Results.NotFound();
+    var current = family.Members.FirstOrDefault(m => m.UserId == userId);
+    if (current is null) return Results.NotFound();
+    if (current.Role == "Head")
+        return Results.Conflict(new { error = "O Head deve transferir a liderança ou excluir a família antes de sair." });
+
+    db.FamilyMembers.Remove(current);
+    await db.SaveChangesAsync(ct);
+    return Results.NoContent();
+}).RequireAuthorization();
+
+app.MapDelete("/api/v1/families/{familyId:guid}", async (
+    Guid familyId, HttpContext http, FamilyDbContext db, CancellationToken ct) =>
+{
+    if (!TryUserId(http.User, out var userId)) return Results.Unauthorized();
+    var family = await db.Families.Include(f => f.Members)
+        .FirstOrDefaultAsync(f => f.Id == familyId, ct);
+    if (family is null) return Results.NotFound();
+    var current = family.Members.FirstOrDefault(m => m.UserId == userId);
+    if (!FamilyGovernance.CanManage(current?.Role)) return Results.Forbid();
+
+    db.Families.Remove(family);
+    await db.SaveChangesAsync(ct);
+    return Results.NoContent();
 }).RequireAuthorization();
 
 await app.RunAsync();
@@ -178,7 +306,14 @@ static bool TryUserId(ClaimsPrincipal p, out Guid id)
 }
 
 record CreateFamilyRequest(string Name, string? Description);
+record UpdateFamilyRequest(string Name, string? Description);
 record AddFamilyMemberRequest(string PublicId);
+record TransferFamilyHeadRequest(Guid UserId);
+
+static class FamilyPolicy
+{
+    public const int MaxMembers = 100;
+}
 
 static class FamilyInput
 {
@@ -201,11 +336,59 @@ static class FamilyInput
         return publicId.Length == 8 && publicId.All(PublicIdAlphabet.Contains);
     }
 }
+
+enum FamilyGovernanceDecision { Allowed, Forbidden, TargetNotMember, TargetAlreadyHead }
+
+static class FamilyGovernance
+{
+    public static bool CanManage(string? role) => role == "Head";
+
+    public static FamilyGovernanceDecision TransferHead(
+        FamilyEntity family, Guid actorId, Guid targetId)
+    {
+        var actor = family.Members.FirstOrDefault(m => m.UserId == actorId);
+        if (!CanManage(actor?.Role)) return FamilyGovernanceDecision.Forbidden;
+        var target = family.Members.FirstOrDefault(m => m.UserId == targetId);
+        if (target is null) return FamilyGovernanceDecision.TargetNotMember;
+        if (target.Role == "Head") return FamilyGovernanceDecision.TargetAlreadyHead;
+
+        actor!.Role = "Member";
+        target.Role = "Head";
+        return FamilyGovernanceDecision.Allowed;
+    }
+}
+
 record UserDto(Guid Id, string PublicId, string Username, string Email)
 {
     public static UserDto From(UserProjection u) => new(u.Id, u.PublicId, u.Username, u.Email);
 }
-record FamilyDto(Guid Id, string Name, string Role, int MembersCount);
+record FamilyDto(
+    Guid Id, string Name, string? Description, string Role,
+    int MembersCount, DateTimeOffset CreatedAt);
+record FamilyMemberDto(
+    Guid UserId, string PublicId, string Username, string Role, DateTimeOffset JoinedAt);
+record FamilyDetailsDto(
+    Guid Id, string Name, string? Description, string Role,
+    int MembersCount, DateTimeOffset CreatedAt, IReadOnlyList<FamilyMemberDto> Members)
+{
+    public static FamilyDetailsDto From(FamilyEntity family, string role) => new(
+        family.Id,
+        family.Name,
+        family.Description,
+        role,
+        family.Members.Count,
+        family.CreatedAt,
+        family.Members
+            .OrderByDescending(m => m.Role == "Head")
+            .ThenBy(m => m.JoinedAt)
+            .Select(m => new FamilyMemberDto(
+                m.UserId,
+                m.User?.PublicId ?? "",
+                m.User?.Username ?? "Usuário",
+                m.Role,
+                m.JoinedAt))
+            .ToList());
+}
 
 class UserProjection
 {
