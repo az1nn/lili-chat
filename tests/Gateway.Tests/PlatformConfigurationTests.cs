@@ -22,7 +22,7 @@ public class PlatformConfigurationTests
 
         var postgres = new DbConnectionStringBuilder
         {
-            ConnectionString = builder.Configuration.GetConnectionString("Default")!
+            ConnectionString = builder.Configuration["ConnectionStrings:Default"]!
         };
         Assert.Equal("db.internal", postgres["Host"]?.ToString());
         Assert.Equal("5432", postgres["Port"]?.ToString());
@@ -59,7 +59,7 @@ public class PlatformConfigurationTests
 
         builder.AddFamilyChatObservability("compose-config-test");
 
-        Assert.Equal(postgres, builder.Configuration.GetConnectionString("Default"));
+        Assert.Equal(postgres, builder.Configuration["ConnectionStrings:Default"]);
         Assert.Equal(redis, builder.Configuration["Redis:Connection"]);
     }
 }
