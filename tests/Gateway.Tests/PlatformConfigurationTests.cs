@@ -1,6 +1,7 @@
 using System.Data.Common;
 using FamilyChat.ServiceDefaults;
 using Microsoft.AspNetCore.Builder;
+using Xunit;
 
 public class PlatformConfigurationTests
 {
